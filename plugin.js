@@ -1634,8 +1634,8 @@ function ActivityHeatmap({ heatmap }) {
             jsxs('div', {
               className: 'flex items-center justify-between',
               children: [
-                jsx('span', { className: 'text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: 'By hour of day' }),
-                jsx('span', { className: 'text-[0.5625rem] text-(--ui-text-quaternary)', children: '24 blocks · one per hour' })
+                jsx('span', { className: 'text-[0.6875rem] font-semibold uppercase tracking-wide text-(--ui-text-secondary)', children: 'By hour of day' }),
+                jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: '24 blocks · one per hour' })
               ]
             }),
             jsxs('div', {
@@ -1653,16 +1653,21 @@ function ActivityHeatmap({ heatmap }) {
                       ? jsxs('div', {
                           className: 'flex items-baseline gap-0.5',
                           children: [
+                            // Fixed dark text: cell backgrounds are always
+                            // light pastel, so theme tokens would go white
+                            // and unreadable on dark themes.
                             jsx('span', {
-                              className: 'font-semibold leading-none text-(--ui-text-primary)',
+                              className: 'text-[0.6875rem] font-bold leading-none',
+                              style: { color: '#2f3a46' },
                               children: n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
                             }),
-                            jsx('span', { className: 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)', children: 'msgs' })
+                            jsx('span', { className: 'text-[0.5rem] font-medium leading-none', style: { color: '#5b6672' }, children: 'msgs' })
                           ]
                         })
-                      : jsx('span', { className: 'leading-none text-(--ui-text-quaternary)', children: '·' }),
+                      : jsx('span', { className: 'text-[0.625rem] leading-none', style: { color: '#8a95a1' }, children: '·' }),
                     jsx('span', {
-                      className: n > 0 ? 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)' : 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)',
+                      className: 'text-[0.5rem] font-medium leading-none',
+                      style: { color: '#5b6672' },
                       children: label
                     }),
                     n > 0
@@ -1685,8 +1690,8 @@ function ActivityHeatmap({ heatmap }) {
                 jsxs('div', {
                   className: 'flex items-center justify-between',
                   children: [
-                    jsx('span', { className: 'text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: 'Per day' }),
-                    jsx('span', { className: 'text-[0.5625rem] text-(--ui-text-quaternary)', children: `${days.length} blocks · one per day` })
+                    jsx('span', { className: 'text-[0.6875rem] font-semibold uppercase tracking-wide text-(--ui-text-secondary)', children: 'Per day' }),
+                    jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: `${days.length} blocks · one per day` })
                   ]
                 }),
                 jsxs('div', {
@@ -1703,11 +1708,11 @@ function ActivityHeatmap({ heatmap }) {
                         jsxs('div', {
                           className: 'flex items-baseline gap-0.5',
                           children: [
-                            jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
-                            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'msgs' })
+                            jsx('span', { className: 'text-[0.75rem] font-bold tabular-nums leading-none', style: { color: '#2f3a46' }, children: fmtNum(d.count) }),
+                            jsx('span', { className: 'text-[0.5rem] font-medium leading-none', style: { color: '#5b6672' }, children: 'msgs' })
                           ]
                         }),
-                        jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: short }),
+                        jsx('span', { className: 'text-[0.5625rem] font-medium leading-none', style: { color: '#5b6672' }, children: short }),
                         jsx('span', {
                           className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
                           children: `${d.date}: ${fmtNum(d.count)} messages`
@@ -1723,15 +1728,15 @@ function ActivityHeatmap({ heatmap }) {
         jsxs('div', {
           className: 'flex items-center justify-end gap-1.5',
           children: [
-            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'low' }),
+            jsx('span', { className: 'text-[0.625rem] font-medium text-(--ui-text-tertiary)', children: 'low' }),
             [0.05, 0.2, 0.4, 0.6, 0.85, 1].map(t =>
               jsx('span', {
                 key: t,
-                className: 'h-2 w-2 rounded-sm',
+                className: 'h-2.5 w-2.5 rounded-sm',
                 style: { backgroundColor: heatColor(t) }
               })
             ),
-            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'high' })
+            jsx('span', { className: 'text-[0.625rem] font-medium text-(--ui-text-tertiary)', children: 'high' })
           ]
         })
       ]
