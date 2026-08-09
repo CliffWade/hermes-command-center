@@ -35,7 +35,7 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 import { useEffect, useState } from 'react'
 
 const ID = 'command-center'
-const TABS = ['overview', 'activity', 'usage', 'cron', 'plugins', 'models', 'skills', 'memory']
+const TABS = ['overview', 'activity', 'usage', 'tools', 'cron', 'plugins', 'models', 'skills', 'memory', 'system']
 
 // Fixed accent palette (deliberately NOT theme accent so each section stays
 // distinguishable, same approach as the achievements sections).
@@ -54,11 +54,13 @@ const TAB_META = {
   overview: { icon: 'dashboard', accent: ACCENTS.blue },
   activity: { icon: 'history', accent: ACCENTS.rose },
   usage: { icon: 'graph-line', accent: ACCENTS.gold },
+  tools: { icon: 'tools', accent: ACCENTS.teal },
   cron: { icon: 'clock', accent: ACCENTS.teal },
   plugins: { icon: 'plug', accent: ACCENTS.purple },
   models: { icon: 'graph', accent: ACCENTS.gold },
   skills: { icon: 'book', accent: ACCENTS.green },
-  memory: { icon: 'database', accent: ACCENTS.rose }
+  memory: { icon: 'database', accent: ACCENTS.rose },
+  system: { icon: 'server', accent: ACCENTS.blue }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -502,6 +504,37 @@ function GatewayStrip({ gateway }) {
   })
 }
 
+// ── error log viewer ───────────────────────────────────────────────────────
+
+// Collapsible list of recent error/warning lines from errors.log.
+function ErrorLogViewer({ lines }) {
+  return jsx(Section, {
+    title: 'Recent errors',
+    icon: 'error',
+    accent: ACCENTS.red,
+    extra: `${lines.length} shown`,
+    children: jsxs('div', {
+      className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome)',
+      children: lines.map((ln, i) => (
+        jsxs('div', {
+          key: i,
+          className: cn(
+            'flex items-start gap-2 px-3 py-1.5 text-[0.625rem] leading-snug',
+            i > 0 && 'border-t border-(--ui-stroke-secondary)'
+          ),
+          children: [
+            jsx('span', {
+              className: 'shrink-0 font-mono tabular-nums text-(--ui-text-quaternary)',
+              children: ln.length >= 19 ? ln.slice(0, 19) : '—'
+            }),
+            jsx('span', { className: 'min-w-0 flex-1 break-words font-mono text-(--ui-error)', title: ln, children: ln.length > 19 ? ln.slice(19) : ln })
+          ]
+        })
+      ))
+    })
+  })
+}
+
 // ── Overview tab ───────────────────────────────────────────────────────────
 
 function OverviewTab({ data, onRefresh }) {
@@ -604,6 +637,10 @@ function OverviewTab({ data, onRefresh }) {
           })
         ]
       }),
+      // Recent error lines — only when there are errors to show
+      e.count_24h && e.latest && e.latest.length
+        ? jsx(ErrorLogViewer, { lines: e.latest })
+        : null,
       jsx(Section, {
         title: 'Active processes',
         icon: 'pulse',
@@ -1867,6 +1904,211 @@ function UsageTab({ data }) {
   })
 }
 
+// ── Tools tab ──────────────────────────────────────────────────────────────
+
+// Tool icon + accent by name; unknown tools get a neutral gear.
+const TOOL_META = {
+  terminal: { icon: 'terminal', label: 'Terminal', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
+  patch: { icon: 'edit', label: 'Patch', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  read_file: { icon: 'file-code', label: 'Read file', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
+  write_file: { icon: 'save', label: 'Write file', accent: { from: '#2f9e63', to: '#3ecf8e', text: '#2f9e63', bg: 'rgba(47,158,99,0.12)' } },
+  execute_code: { icon: 'debug', label: 'Execute code', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
+  search_files: { icon: 'search', label: 'Search files', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  todo: { icon: 'checklist', label: 'Todo', accent: { from: '#2f9e63', to: '#3ecf8e', text: '#2f9e63', bg: 'rgba(47,158,99,0.12)' } },
+  fact_store: { icon: 'database', label: 'Fact store', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  session_search: { icon: 'search', label: 'Session search', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
+  memory: { icon: 'database', label: 'Memory', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  web_search: { icon: 'globe', label: 'Web search', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
+  vision_analyze: { icon: 'eye', label: 'Vision', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
+  delegate_task: { icon: 'organization', label: 'Delegate', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  image_generate: { icon: 'device-camera', label: 'Image gen', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  skill_manage: { icon: 'book', label: 'Skill manage', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
+  skill_view: { icon: 'book', label: 'Skill view', accent: { from: '#2f9e63', to: '#3ecf8e', text: '#2f9e63', bg: 'rgba(47,158,99,0.12)' } },
+  browser_navigate: { icon: 'globe', label: 'Browser', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } }
+}
+
+function toolMeta(name) {
+  if (TOOL_META[name]) return TOOL_META[name]
+  const readable = String(name || 'unknown').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim()
+  return {
+    icon: 'tools',
+    label: readable || 'Unknown',
+    accent: { from: '#8a8f98', to: '#c3c8cf', text: '#8a8f98', bg: 'rgba(138,143,152,0.12)' }
+  }
+}
+
+function ToolsTab({ data }) {
+  const tools = data.tools || []
+  const totalCalls = tools.reduce((acc, t) => acc + (t.calls || 0), 0)
+  const maxCalls = Math.max(...tools.map(t => t.calls), 1)
+
+  return jsxs('div', {
+    className: 'flex flex-col gap-4 p-6',
+    children: [
+      jsxs('div', {
+        className: 'grid gap-3',
+        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' },
+        children: [
+          jsx(StatCard, { label: 'Tools used', value: String(tools.length), sub: 'distinct tools', icon: 'tools', accent: ACCENTS.teal, index: 0 }),
+          jsx(StatCard, { label: 'Total calls', value: fmtNum(totalCalls), sub: 'all time', icon: 'play', accent: ACCENTS.blue, index: 1 }),
+          jsx(StatCard, { label: 'Most used', value: tools[0] ? toolMeta(tools[0].name).label : '—', sub: tools[0] ? `${fmtNum(tools[0].calls)} calls` : 'no usage yet', icon: 'star', accent: ACCENTS.gold, index: 2 }),
+          jsx(StatCard, { label: 'Share of top', value: tools[0] && totalCalls ? `${Math.round((tools[0].calls / totalCalls) * 100)}%` : '—', sub: 'terminal of all calls', icon: 'graph-line', accent: ACCENTS.rose, index: 3 })
+        ]
+      }),
+      jsx(Section, {
+        title: 'Tool usage',
+        icon: 'tools',
+        accent: ACCENTS.teal,
+        extra: `${tools.length} tools`,
+        children: tools.length
+          ? jsxs('div', {
+              className: 'grid gap-2',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' },
+              children: tools.map((t, i) => {
+                const meta = toolMeta(t.name)
+                const pct = Math.round((t.calls / maxCalls) * 100)
+                return jsxs('div', {
+                  key: t.name,
+                  className: cn(
+                    'hc-glow hc-fade-up flex items-center gap-2.5 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg'
+                  ),
+                  style: { animationDelay: `${i * 25}ms` },
+                  children: [
+                    jsx('div', {
+                      className: 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white',
+                      style: { background: `linear-gradient(135deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)`, boxShadow: '0 4px 10px rgba(0,0,0,0.18)' },
+                      children: jsx(Codicon, { name: meta.icon, className: 'text-sm' })
+                    }),
+                    jsxs('div', {
+                      className: 'min-w-0 flex-1',
+                      children: [
+                        jsx('span', { className: 'block truncate text-xs font-semibold text-(--ui-text-primary)', title: t.name, children: meta.label }),
+                        jsx('div', {
+                          className: 'mt-1 h-1.5 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
+                          children: jsx('div', {
+                            className: 'h-full rounded-full',
+                            style: { width: `${Math.max(2, pct)}%`, background: `linear-gradient(90deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)` }
+                          })
+                        })
+                      ]
+                    }),
+                    jsx('span', {
+                      className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums',
+                      style: { backgroundColor: meta.accent.bg, color: meta.accent.text },
+                      children: fmtNum(t.calls)
+                    })
+                  ]
+                })
+              })
+            })
+          : jsx(EmptyState, { title: 'No tool data', description: 'No tool usage recorded yet.' })
+      })
+    ]
+  })
+}
+
+// ── System tab ─────────────────────────────────────────────────────────────
+
+function fmtBytes(n) {
+  if (n == null) return '—'
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+function fmtUptime(sec) {
+  if (!sec) return '—'
+  const d = Math.floor(sec / 86400)
+  const h = Math.floor((sec % 86400) / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
+function SystemTab({ data }) {
+  const storage = data.storage || []
+  const totalBytes = data.total_bytes || storage.reduce((a, s) => a + (s.bytes || 0), 0)
+  const maxBytes = Math.max(...storage.map(s => s.bytes), 1)
+
+  return jsxs('div', {
+    className: 'flex flex-col gap-4 p-6',
+    children: [
+      jsxs('div', {
+        className: 'grid gap-3',
+        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' },
+        children: [
+          jsx(StatCard, { label: 'Hermes home', value: fmtBytes(totalBytes), sub: 'tracked storage', icon: 'database', accent: ACCENTS.blue, index: 0 }),
+          jsx(StatCard, { label: 'Commit', value: data.commit ? data.commit.slice(0, 7) : '—', sub: 'hermes-agent', icon: 'git-commit', accent: ACCENTS.purple, index: 1 }),
+          jsx(StatCard, { label: 'Python', value: data.python || '—', sub: 'runtime', icon: 'code', accent: ACCENTS.teal, index: 2 }),
+          jsx(StatCard, { label: 'Uptime', value: fmtUptime(data.uptime_sec), sub: 'backend process', icon: 'clock', accent: ACCENTS.gold, index: 3 })
+        ]
+      }),
+      jsx(Section, {
+        title: 'Storage',
+        icon: 'database',
+        accent: ACCENTS.blue,
+        extra: `${storage.length} locations`,
+        children: storage.length
+          ? jsxs('div', {
+              className: 'flex flex-col gap-2',
+              children: storage.map((s, i) => {
+                const c = modelColor(i)
+                return jsxs('div', {
+                  key: s.name,
+                  className: 'flex flex-col gap-1',
+                  children: [
+                    jsxs('div', {
+                      className: 'flex items-center gap-2 text-xs',
+                      children: [
+                        jsx('span', { className: 'w-28 shrink-0 truncate font-medium text-(--ui-text-primary)', children: s.name }),
+                        jsx('span', { className: 'ml-auto shrink-0 tabular-nums text-(--ui-text-secondary)', children: fmtBytes(s.bytes) })
+                      ]
+                    }),
+                    jsx('div', {
+                      className: 'h-1.5 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
+                      children: jsx('div', {
+                        className: 'h-full rounded-full',
+                        style: { width: `${Math.max(2, (s.bytes / maxBytes) * 100)}%`, background: c.bar }
+                      })
+                    })
+                  ]
+                })
+              })
+            })
+          : jsx(EmptyState, { title: 'No storage data', description: 'Could not measure storage.' })
+      }),
+      jsx(Section, {
+        title: 'Environment',
+        icon: 'server',
+        accent: ACCENTS.blue,
+        children: jsxs('div', {
+          className: 'grid gap-1.5',
+          style: { gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' },
+          children: [
+            jsx(EnvRow, { k: 'Version', v: data.version || 'dev checkout' }),
+            jsx(EnvRow, { k: 'Commit', v: data.commit || '—' }),
+            jsx(EnvRow, { k: 'Python', v: data.python || '—' }),
+            jsx(EnvRow, { k: 'Home', v: data.home || '—' }),
+            jsx(EnvRow, { k: 'Uptime', v: fmtUptime(data.uptime_sec) })
+          ]
+        })
+      })
+    ]
+  })
+}
+
+function EnvRow({ k, v }) {
+  return jsxs('div', {
+    className: 'flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2',
+    children: [
+      jsx('span', { className: 'w-20 shrink-0 text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: k }),
+      jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] text-(--ui-text-primary)', title: v, children: v })
+    ]
+  })
+}
+
 // ── main page ──────────────────────────────────────────────────────────────
 
 function CommandCenterPage() {
@@ -1937,6 +2179,8 @@ function CommandCenterPage() {
                   ? jsx(ActivityTab, { data })
                   : tab === 'usage'
                     ? jsx(UsageTab, { data })
+                    : tab === 'tools'
+                      ? jsx(ToolsTab, { data })
                 : tab === 'cron'
                   ? jsx(CronTab, { data })
                   : tab === 'plugins'
@@ -1945,7 +2189,9 @@ function CommandCenterPage() {
                       ? jsx(ModelsTab, { data })
                     : tab === 'skills'
                       ? jsx(SkillsTab, { data })
-                      : jsx(MemoryTab, { data })
+                      : tab === 'memory'
+                        ? jsx(MemoryTab, { data })
+                        : jsx(SystemTab, { data })
         })
       })
     ]

@@ -167,18 +167,30 @@ async def overview():
     except Exception:
         pass
 
-    # Error count in errors.log, last 24h.
+    # Error count in errors.log, last 24h + recent lines for the viewer.
     errors = {"count_24h": 0, "latest": []}
     log_path = home / "logs" / "errors.log"
     try:
         if log_path.exists():
             mtime = log_path.stat().st_mtime
-            recent = []
-            if mtime >= now - 86400:
-                lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
-                recent = lines[-8:]
-            errors["count_24h"] = len(recent) if mtime >= now - 86400 else 0
-            errors["latest"] = recent[-3:]
+            lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+            recent = lines[-12:]
+            # Count only lines from the last 24h (timestamp prefix on most lines).
+            count = 0
+            for ln in lines:
+                if ln[:19].isdigit() or "-" in ln[:10]:
+                    try:
+                        ts = ln[:23]
+                        if ts[:4].isdigit():
+                            t = time.mktime(time.strptime(ts[:19], "%Y-%m-%d %H:%M:%S"))
+                            if now - t <= 86400:
+                                count += 1
+                        else:
+                            count += 1
+                    except Exception:
+                        count += 1
+            errors["count_24h"] = count if mtime >= now - 86400 else 0
+            errors["latest"] = recent[-6:]
     except Exception:
         pass
 
@@ -739,3 +751,126 @@ async def usage():
             })
 
     return out
+
+
+# ── tools ───────────────────────────────────────────────────────────────────
+
+@router.get("/tools")
+async def tools():
+    """Tool usage from message records: which tools Hermes calls most."""
+    out = {"tools": []}
+    db = _state_db()
+    if not db.exists():
+        return out
+    try:
+        import sqlite3
+        con = sqlite3.connect(db)
+        rows = con.execute(
+            "SELECT tool_name, COUNT(*), MAX(timestamp) "
+            "FROM messages WHERE tool_name IS NOT NULL AND tool_name != '' "
+            "GROUP BY tool_name ORDER BY COUNT(*) DESC LIMIT 25"
+        ).fetchall()
+        con.close()
+        for r in rows:
+            out["tools"].append({
+                "name": r[0] or "unknown",
+                "calls": _int(r[1]),
+                "last_used": _int(r[2]) or 0,
+            })
+    except Exception:
+        pass
+    return out
+
+
+# ── system ──────────────────────────────────────────────────────────────────
+
+@router.get("/system")
+async def system():
+    """Storage, version, uptime — the 'is my install healthy' view."""
+    home = _hermes_home()
+    now = time.time()
+    out = {"storage": [], "total_bytes": 0, "version": "", "commit": "",
+           "python": "", "home": str(home), "uptime_sec": 0}
+
+    def _dir_size(p: Path) -> int:
+        total = 0
+        try:
+            for f in p.rglob("*"):
+                if f.is_file():
+                    try:
+                        total += f.stat().st_size
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return total
+
+    # Storage breakdown of the most interesting directories.
+    parts = []
+    for name, sub in (
+        ("state.db", "state.db"),
+        ("logs", "logs"),
+        ("sessions", "sessions"),
+        ("data", "data"),
+        ("skills", "skills"),
+        ("plugins", "plugins"),
+        ("memories", "memories"),
+        ("cron", "cron"),
+    ):
+        p = home / sub
+        if p.exists():
+            size = p.stat().st_size if p.is_file() else _dir_size(p)
+            if size > 0:
+                parts.append({"name": name, "bytes": size})
+    out["storage"] = parts
+    out["total_bytes"] = sum(x["bytes"] for x in parts)
+
+    # Hermes version + commit (from the repo the app runs from).
+    try:
+        ver_file = home / "version"
+        if ver_file.exists():
+            out["version"] = ver_file.read_text(encoding="utf-8").strip()
+    except Exception:
+        pass
+    try:
+        out["version"] = out["version"] or os.environ.get("HERMES_VERSION", "")
+    except Exception:
+        pass
+
+    # Python + repo commit.
+    out["python"] = f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
+    try:
+        repo = Path(os.environ.get("HERMES_AGENT_REPO", "")) or (home.parent / "hermes-agent")
+        if (repo / ".git").exists():
+            import subprocess as sp
+            out["commit"] = sp.run(
+                ["git", "-C", str(repo), "log", "--oneline", "-1"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+    except Exception:
+        pass
+
+    # Uptime of the current backend process.
+    try:
+        out["uptime_sec"] = int(time.time() - _process_start())
+    except Exception:
+        pass
+
+    return out
+
+
+def _process_start() -> float:
+    try:
+        with open("/proc/self/stat") as f:
+            parts = f.read().split()
+            return float(parts[21]) / 100.0
+    except Exception:
+        pass
+    # macOS fallback: ps start time.
+    try:
+        import subprocess as sp
+        out = sp.run(["ps", "-o", "lstart=", "-p", str(os.getpid())],
+                     capture_output=True, text=True, timeout=5).stdout.strip()
+        return time.mktime(time.strptime(out, "%a %b %d %H:%M:%S %Y"))
+    except Exception:
+        return time.time()
