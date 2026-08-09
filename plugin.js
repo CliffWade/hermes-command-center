@@ -1548,66 +1548,65 @@ function ActivityTab({ data }) {
             })
           : jsx(EmptyState, { title: 'No sessions', description: 'No session activity recorded yet.' })
       }),
-      // Delegations + deliveries side by side
-      jsxs('div', {
-        className: 'grid gap-4',
-        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' },
-        children: [
-          jsx(Section, {
-            title: 'Delegations',
-            icon: 'organization',
-            accent: ACCENTS.teal,
-            extra: `${delegations.length} shown`,
-            children: delegations.length
-              ? jsxs('div', {
-                  className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
-                  children: delegations.map((d, i) => (
-                    jsxs('div', {
-                      key: d.id,
-                      className: cn('flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
-                      children: [
-                        jsx('span', {
-                          className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
-                          style: d.state === 'completed'
-                            ? { backgroundColor: 'rgba(47,158,99,0.12)', color: '#2f9e63' }
-                            : { backgroundColor: 'rgba(183,121,31,0.12)', color: '#b7791f' },
-                          children: d.state || '?'
-                        }),
-                        jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: d.origin_session, children: sessionShort(d.origin_session) }),
-                        jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.dispatched_at ? fmtRelTime(new Date(d.dispatched_at * 1000)) : '—' })
-                      ]
+      // Background tasks — delegations + deliveries in one compact section
+      jsx(Section, {
+        title: 'Background tasks',
+        icon: 'organization',
+        accent: ACCENTS.teal,
+        extra: `${delegations.length + deliveries.length} total`,
+        children: (delegations.length || deliveries.length)
+          ? jsxs('div', {
+              className: 'flex flex-col gap-2',
+              children: [
+                // Delegations — only render when non-empty
+                delegations.length
+                  ? jsxs('div', {
+                      className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                      children: delegations.map((d, i) => (
+                        jsxs('div', {
+                          key: d.id,
+                          className: cn('flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                          children: [
+                            jsx('span', {
+                              className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
+                              style: d.state === 'completed'
+                                ? { backgroundColor: 'rgba(47,158,99,0.12)', color: '#2f9e63' }
+                                : { backgroundColor: 'rgba(183,121,31,0.12)', color: '#b7791f' },
+                              children: d.state || '?'
+                            }),
+                            jsx('span', { className: 'w-40 shrink-0 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.origin_session, children: d.label || sessionShort(d.origin_session) }),
+                            jsx('span', { className: 'min-w-0 flex-1' }),
+                            jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.dispatched_at ? fmtRelTime(new Date(d.dispatched_at * 1000)) : '—' })
+                          ]
+                        })
+                      ))
                     })
-                  ))
-                })
-              : jsx(EmptyState, { title: 'No delegations', description: 'No background tasks yet.' })
-          }),
-          jsx(Section, {
-            title: 'Deliveries',
-            icon: 'send',
-            accent: ACCENTS.gold,
-            extra: `${deliveries.length} shown`,
-            children: deliveries.length
-              ? jsxs('div', {
-                  className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
-                  children: deliveries.map((d, i) => (
-                    jsxs('div', {
-                      key: d.id,
-                      className: cn('flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
-                      children: [
-                        jsx('span', {
-                          className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
-                          style: { backgroundColor: 'rgba(47,127,212,0.12)', color: '#2f7fd4' },
-                          children: d.platform || '?'
-                        }),
-                        jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: d.session_key, children: sessionShort(d.session_key) }),
-                        jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.created_at ? fmtRelTime(new Date(d.created_at * 1000)) : '—' })
-                      ]
+                  : null,
+                // Deliveries — only render when non-empty
+                deliveries.length
+                  ? jsxs('div', {
+                      className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                      children: deliveries.map((d, i) => (
+                        jsxs('div', {
+                          key: d.id,
+                          className: cn('flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                          children: [
+                            jsx('span', {
+                              className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
+                              style: { backgroundColor: 'rgba(47,127,212,0.12)', color: '#2f7fd4' },
+                              children: d.platform || '?'
+                            }),
+                            jsx('span', { className: 'w-40 shrink-0 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.session_key, children: sessionShort(d.session_key) }),
+                            jsx('span', { className: 'min-w-0 flex-1' }),
+                            jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.created_at ? fmtRelTime(new Date(d.created_at * 1000)) : '—' })
+                          ]
+                        })
+                      ))
                     })
-                  ))
-                })
-              : jsx(EmptyState, { title: 'No deliveries', description: 'No queued deliveries.' })
-          })
-        ]
+                  : null
+              ]
+            })
+          : jsx(EmptyState, { title: 'No background tasks', description: 'No delegations or queued deliveries yet.' })
       })
     ]
   })

@@ -572,6 +572,7 @@ async def activity():
             out["delegations"].append({
                 "id": r["delegation_id"],
                 "origin_session": r["origin_session"] or "",
+                "label": _session_label(r["origin_session"] or "", ""),
                 "state": r["state"] or "",
                 "dispatched_at": _int(r["dispatched_at"]) or 0,
                 "completed_at": _int(r["completed_at"]) or 0,
