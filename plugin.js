@@ -1592,21 +1592,22 @@ function ActivityHeatmap({ heatmap }) {
   const maxDay = Math.max(...days.map(d => d.count), 1)
   const total7d = days.reduce((a, d) => a + d.count, 0)
 
-  // Rainbow heat scale: slate -> blue -> teal -> green -> gold -> orange
-  // -> pink -> red as activity climbs, so every intensity band is distinct.
+  // Pastel rainbow heat scale: soft slate -> blue -> teal -> green -> gold
+  // -> peach -> pink -> rose as activity climbs. Light, easy-on-the-eyes
+  // tints that still keep every intensity band distinct.
   const STOPS = [
-    [0.00, [148, 163, 184]], // slate (low)
-    [0.15, [47, 127, 212]],  // blue
-    [0.35, [15, 154, 154]],  // teal
-    [0.50, [47, 158, 99]],   // green
-    [0.65, [224, 166, 61]],  // gold
-    [0.80, [217, 119, 6]],   // orange
-    [0.92, [212, 87, 143]],  // pink
-    [1.00, [214, 69, 69]]    // red (peak)
+    [0.00, [222, 230, 240]], // soft slate (low)
+    [0.15, [176, 205, 240]], // pastel blue
+    [0.35, [173, 222, 222]], // pastel teal
+    [0.50, [190, 226, 190]], // pastel green
+    [0.65, [240, 222, 176]], // pastel gold
+    [0.80, [244, 205, 173]], // pastel peach
+    [0.92, [240, 187, 214]], // pastel pink
+    [1.00, [235, 177, 177]]  // pastel rose (peak)
   ]
   const heatColor = pct => {
     const t = Math.min(1, Math.max(0, pct))
-    if (t <= 0.02) return 'rgba(148,163,184,0.10)'
+    if (t <= 0.02) return 'rgba(222,230,240,0.45)'
     let lo = STOPS[0], hi = STOPS[STOPS.length - 1]
     for (let i = 0; i < STOPS.length - 1; i++) {
       if (t >= STOPS[i][0] && t <= STOPS[i + 1][0]) { lo = STOPS[i]; hi = STOPS[i + 1]; break }
@@ -1614,7 +1615,7 @@ function ActivityHeatmap({ heatmap }) {
     const span = hi[0] - lo[0] || 1
     const f = (t - lo[0]) / span
     const c = lo[1].map((v, i) => Math.round(v + (hi[1][i] - v) * f))
-    const a = 0.28 + t * 0.72 // stronger alpha as activity climbs
+    const a = 0.55 + t * 0.4 // pastels stay legible with a moderate alpha
     return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(2)})`
   }
 
