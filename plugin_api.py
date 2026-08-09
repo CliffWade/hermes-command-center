@@ -871,6 +871,51 @@ async def system():
     except Exception:
         pass
 
+    # Update check: compare the running commit against the latest GitHub
+    # release. Read-only; failure just leaves update=None.
+    out["update"] = None
+    if out["commit"]:
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                "https://api.github.com/repos/NousResearch/hermes-agent/releases/latest",
+                headers={"Accept": "application/vnd.github+json", "User-Agent": "hermes-command-center"},
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                d = json.loads(resp.read().decode("utf-8"))
+            tag = (d.get("tag_name") or "").strip()
+            published = d.get("published_at") or ""
+            if tag:
+                out["update"] = {
+                    "available": True,
+                    "tag": tag,
+                    "published_at": published,
+                    "url": d.get("html_url") or "",
+                    "notes": (d.get("body") or "")[:300],
+                }
+        except Exception:
+            pass
+
+    # Active config: what the user is actually running on.
+    try:
+        cfg = {}
+        conf_file = home / "config.yaml"
+        if conf_file.exists():
+            import yaml
+            raw = yaml.safe_load(conf_file.read_text(encoding="utf-8")) or {}
+            m = raw.get("model") or {}
+            dsp = raw.get("display") or {}
+            term = raw.get("terminal") or {}
+            cfg = {
+                "provider": m.get("provider") or "",
+                "model": m.get("model") or "",
+                "skin": dsp.get("skin") or "",
+                "terminal_cwd": term.get("cwd") or "",
+            }
+        out["config"] = cfg
+    except Exception:
+        out["config"] = {}
+
     return out
 
 
@@ -894,3 +939,47 @@ def _parse_etime(s: str) -> int:
         return days * 86400 + int(parts[0])
     except Exception:
         return 0
+
+
+# ── search ──────────────────────────────────────────────────────────────────
+
+@router.get("/search")
+async def search(q: str = ""):
+    """Full-text search over message history via the FTS5 index."""
+    q = (q or "").strip()
+    out = {"query": q, "results": []}
+    if not q or len(q) < 2:
+        return out
+    db = _state_db()
+    if not db.exists():
+        return out
+    try:
+        import sqlite3
+        con = sqlite3.connect(db)
+        con.row_factory = sqlite3.Row
+        # FTS5 with a quoted phrase + prefix fallback. Escape double quotes.
+        safe = q.replace('"', '""')
+        match_expr = f'"{safe}"*'
+        rows = con.execute(
+            "SELECT m.session_id, s.source, s.model, "
+            "snippet(messages_fts, 0, '[', ']', '…', 24) AS snip, "
+            "m.timestamp "
+            "FROM messages_fts f "
+            "JOIN messages m ON m.id = f.rowid "
+            "LEFT JOIN sessions s ON s.id = m.session_id "
+            "WHERE messages_fts MATCH ? "
+            "ORDER BY m.timestamp DESC LIMIT 20",
+            (match_expr,),
+        ).fetchall()
+        con.close()
+        for r in rows:
+            out["results"].append({
+                "session_id": r["session_id"] or "",
+                "source": r["source"] or "",
+                "model": r["model"] or "",
+                "snippet": r["snip"] or "",
+                "timestamp": _int(r["timestamp"]) or 0,
+            })
+    except Exception:
+        pass
+    return out

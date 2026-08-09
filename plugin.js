@@ -1626,6 +1626,30 @@ function ActivityTab({ data }) {
   const showModel = models.size > 1
   const withModel = sessions.map(s => ({ ...s, showModel }))
 
+  // Full-text search over message history (FTS), debounced.
+  const [q, setQ] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [results, setResults] = useState([])
+  useEffect(() => {
+    const term = q.trim()
+    if (term.length < 2) {
+      setResults([])
+      setSearching(false)
+      return
+    }
+    setSearching(true)
+    const t = setTimeout(() => {
+      rest(`/search?q=${encodeURIComponent(term)}`).then(r => {
+        setResults((r && r.results) || [])
+        setSearching(false)
+      }).catch(() => {
+        setResults([])
+        setSearching(false)
+      })
+    }, 350)
+    return () => clearTimeout(t)
+  }, [q])
+
   const sourceTone = {
     desktop: ACCENTS.blue,
     tui: ACCENTS.purple,
@@ -1636,6 +1660,57 @@ function ActivityTab({ data }) {
   return jsxs('div', {
     className: 'flex flex-col gap-4 p-6',
     children: [
+      // Session search
+      jsx(Section, {
+        title: 'Search sessions',
+        icon: 'search',
+        accent: ACCENTS.blue,
+        extra: q.trim().length >= 2 ? `${results.length} results` : 'full-text',
+        children: jsxs('div', {
+          className: 'flex flex-col gap-2',
+          children: [
+            jsx('input', {
+              type: 'text',
+              value: q,
+              placeholder: 'Search your message history… (e.g. "memory consolidation", "streak")',
+              onChange: e => setQ(e.target.value),
+              className: 'w-full rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2 text-xs text-(--ui-text-primary) outline-none transition-colors placeholder:text-(--ui-text-quaternary) focus:border-(--ui-stroke-strong)'
+            }),
+            q.trim().length >= 2
+              ? jsxs('div', {
+                  className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                  children: searching
+                    ? jsx('div', { className: 'px-3 py-2 text-xs text-(--ui-text-tertiary)', children: 'Searching…' })
+                    : results.length
+                      ? results.map((r, i) => (
+                          jsxs('div', {
+                            key: i,
+                            className: cn('flex flex-col gap-1 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                            children: [
+                              jsxs('div', {
+                                className: 'flex items-center gap-2',
+                                children: [
+                                  jsx('span', {
+                                    className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
+                                    style: { backgroundColor: (sourceTone[r.source] || ACCENTS.idle).bg, color: (sourceTone[r.source] || ACCENTS.idle).text },
+                                    children: r.source || '?'
+                                  }),
+                                  jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: r.session_id, children: sessionShort(r.session_id) }),
+                                  jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: r.timestamp ? fmtRelTime(new Date(r.timestamp * 1000)) : '—' })
+                                ]
+                              }),
+                              r.snippet
+                                ? jsx('span', { className: 'block font-mono text-[0.625rem] leading-snug text-(--ui-text-tertiary)', children: r.snippet })
+                                : null
+                            ]
+                          })
+                        ))
+                      : jsx('div', { className: 'px-3 py-2 text-xs text-(--ui-text-tertiary)', children: 'No matches.' })
+                })
+              : null
+          ]
+        })
+      }),
       // Summary strip
       jsxs('div', {
         className: 'grid gap-3',
@@ -2118,6 +2193,52 @@ const STORAGE_META = {
   cron: { icon: 'clock', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } }
 }
 
+// Update banner: gradient callout when a newer Hermes release exists.
+function UpdateBanner({ update }) {
+  return jsxs('div', {
+    className: 'hc-fade-up flex items-center gap-3 rounded-xl border border-(--ui-stroke-secondary) p-4',
+    style: {
+      background: 'linear-gradient(135deg, rgba(47,127,212,0.10) 0%, rgba(123,95,217,0.12) 100%)'
+    },
+    children: [
+      jsx('div', {
+        className: 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white',
+        style: { background: 'linear-gradient(135deg, #2f7fd4 0%, #7b5fd9 100%)', boxShadow: '0 4px 12px rgba(47,127,212,0.35)' },
+        children: jsx(Codicon, { name: 'download', className: 'text-base' })
+      }),
+      jsxs('div', {
+        className: 'min-w-0 flex-1',
+        children: [
+          jsx('span', { className: 'block text-xs font-bold text-(--ui-text-primary)', children: `Update available: ${update.tag}` }),
+          jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-tertiary)', children: update.published_at ? `Published ${relativeTime(new Date(update.published_at))}` : 'Newer release on GitHub' }),
+          update.notes ? jsx('span', { className: 'mt-1 block truncate text-[0.625rem] text-(--ui-text-quaternary)', title: update.notes, children: update.notes }) : null
+        ]
+      }),
+      update.url
+        ? jsx('a', {
+            href: update.url,
+            target: '_blank',
+            rel: 'noreferrer',
+            className: 'shrink-0 rounded-lg px-3 py-1.5 text-[0.6875rem] font-semibold text-white transition-opacity hover:opacity-90',
+            style: { background: 'linear-gradient(135deg, #2f7fd4 0%, #7b5fd9 100%)' },
+            children: 'View release'
+          })
+        : null
+    ]
+  })
+}
+
+// Active config chip: label + colored value in a compact tile.
+function ConfigChip({ k, v, accent }) {
+  return jsxs('div', {
+    className: 'flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2',
+    children: [
+      jsx('span', { className: 'w-24 shrink-0 text-[0.5625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: k }),
+      jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium', style: { color: accent.text }, title: v, children: v })
+    ]
+  })
+}
+
 function SystemTab({ data }) {
   const storage = data.storage || []
   const totalBytes = data.total_bytes || storage.reduce((a, s) => a + (s.bytes || 0), 0)
@@ -2126,6 +2247,10 @@ function SystemTab({ data }) {
   return jsxs('div', {
     className: 'flex flex-col gap-4 p-6',
     children: [
+      // Update banner — shown when a newer release exists
+      data.update && data.update.available
+        ? jsx(UpdateBanner, { update: data.update })
+        : null,
       jsxs('div', {
         className: 'grid gap-3',
         style: { gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' },
@@ -2136,6 +2261,25 @@ function SystemTab({ data }) {
           jsx(StatCard, { label: 'Uptime', value: fmtUptime(data.uptime_sec), sub: 'backend process', icon: 'clock', accent: ACCENTS.gold, index: 3 })
         ]
       }),
+      // Active config — what the user is actually running on
+      data.config && (data.config.provider || data.config.skin)
+        ? jsx(Section, {
+            title: 'Active config',
+            icon: 'settings-gear',
+            accent: ACCENTS.purple,
+            extra: 'from config.yaml',
+            children: jsxs('div', {
+              className: 'grid gap-2',
+              style: { gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' },
+              children: [
+                jsx(ConfigChip, { k: 'Provider', v: data.config.provider || '—', accent: ACCENTS.blue }),
+                jsx(ConfigChip, { k: 'Model', v: data.config.model || 'auto', accent: ACCENTS.teal }),
+                jsx(ConfigChip, { k: 'Skin', v: data.config.skin || 'default', accent: ACCENTS.rose }),
+                jsx(ConfigChip, { k: 'Terminal cwd', v: data.config.terminal_cwd || '—', accent: ACCENTS.gold })
+              ]
+            })
+          })
+        : null,
       jsx(Section, {
         title: 'Storage',
         icon: 'database',
