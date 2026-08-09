@@ -525,12 +525,21 @@ const LOG_LEVEL_STYLE = {
 }
 
 // Compact log viewer: each entry is a card in a responsive grid, with a
-// level pill + time + truncated message. Cards fill the width in multiple
-// columns like every other tab — no full-width stretched rows.
+// level pill + time + truncated message + copy button. Cards fill the
+// width in multiple columns like every other tab — no full-width rows.
 function ErrorLogViewer({ lines }) {
   const parsed = lines.map(parseLogLine)
   const errorCount = parsed.filter(l => l.level === 'ERROR').length
   const warnCount = parsed.filter(l => l.level === 'WARNING').length
+  const [copied, setCopied] = useState(null)
+
+  const copyLine = (i, full) => {
+    void navigator.clipboard.writeText(full).then(() => {
+      setCopied(i)
+      haptic('tap')
+      setTimeout(() => setCopied(null), 1500)
+    })
+  }
 
   return jsx(Section, {
     title: 'Recent errors',
@@ -542,10 +551,11 @@ function ErrorLogViewer({ lines }) {
       style: { gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' },
       children: parsed.map((l, i) => {
         const style = LOG_LEVEL_STYLE[l.level] || LOG_LEVEL_STYLE.INFO
+        const full = `${l.ts} ${l.level} ${l.msg}`.trim()
         return jsxs('div', {
           key: i,
           className: cn(
-            'hc-fade-up flex items-start gap-2 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg'
+            'hc-fade-up group relative flex items-start gap-2 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg'
           ),
           style: { animationDelay: `${i * 25}ms` },
           children: [
@@ -559,12 +569,30 @@ function ErrorLogViewer({ lines }) {
             jsxs('div', {
               className: 'min-w-0 flex-1',
               children: [
-                l.time
-                  ? jsx('span', { className: 'block font-mono text-[0.5625rem] tabular-nums text-(--ui-text-quaternary)', title: l.ts, children: l.time })
-                  : null,
+                jsxs('div', {
+                  className: 'flex items-center justify-between gap-2',
+                  children: [
+                    l.time
+                      ? jsx('span', { className: 'font-mono text-[0.5625rem] tabular-nums text-(--ui-text-quaternary)', title: l.ts, children: l.time })
+                      : null,
+                    jsx('button', {
+                      type: 'button',
+                      className: cn(
+                        'shrink-0 rounded px-1.5 py-0.5 text-[0.5625rem] transition-all',
+                        copied === i
+                          ? 'text-(--ui-ok)'
+                          : 'text-(--ui-text-quaternary) opacity-0 hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-primary) group-hover:opacity-100'
+                      ),
+                      style: copied === i ? { backgroundColor: 'rgba(47,158,99,0.12)' } : undefined,
+                      onClick: () => copyLine(i, full),
+                      title: 'Copy error',
+                      children: copied === i ? 'copied' : 'copy'
+                    })
+                  ]
+                }),
                 jsx('span', {
                   className: 'mt-0.5 block font-mono text-[0.625rem] leading-snug text-(--ui-text-secondary)',
-                  title: `${l.ts} ${l.level} ${l.msg}`,
+                  title: full,
                   children: l.msg
                 })
               ]
@@ -688,15 +716,23 @@ function OverviewTab({ data, onRefresh }) {
         accent: ACCENTS.green,
         extra: `${(data.processes || []).length} running`,
         children: jsxs('div', {
-          className: 'flex flex-col gap-1',
+          className: 'grid gap-2',
+          style: { gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' },
           children: (data.processes || []).length
             ? data.processes.map((p, i) =>
                 jsxs('div', {
                   key: i,
-                  className: 'flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)',
+                  className: cn(
+                    'hc-fade-up flex items-center gap-2.5 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg'
+                  ),
+                  style: { animationDelay: `${i * 25}ms` },
                   children: [
-                    jsx('span', { className: 'shrink-0 rounded-md bg-(--ui-bg-quaternary) px-1.5 py-0.5 font-mono text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', children: p.pid }),
-                    jsx('span', { className: 'truncate text-(--ui-text-secondary)', children: p.cmd })
+                    jsx('span', {
+                      className: 'shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[0.625rem] font-semibold tabular-nums',
+                      style: { backgroundColor: 'rgba(47,158,99,0.12)', color: '#2f9e63' },
+                      children: p.pid
+                    }),
+                    jsx('span', { className: 'min-w-0 flex-1 truncate text-xs text-(--ui-text-secondary)', title: p.cmd, children: p.cmd })
                   ]
                 })
               )
