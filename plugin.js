@@ -1466,6 +1466,32 @@ function MemoryFileCard({ name, kind, chars, limit, pct, from, to, bar, index })
 
 // ── Activity tab ───────────────────────────────────────────────────────────
 
+// Session source categories: what each means, its icon, and accent colors.
+// Order controls column layout; desc shows in the column header.
+const CATEGORY_ORDER = ['desktop', 'tui', 'cli', 'cron']
+const CATEGORY_META = {
+  desktop: {
+    icon: 'screen-normal',
+    desc: 'Hermes desktop app',
+    accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' }
+  },
+  tui: {
+    icon: 'terminal',
+    desc: 'Terminal UI',
+    accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' }
+  },
+  cli: {
+    icon: 'terminal',
+    desc: 'Command line',
+    accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' }
+  },
+  cron: {
+    icon: 'clock',
+    desc: 'Scheduled jobs',
+    accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' }
+  }
+}
+
 function sessionShort(id) {
   if (!id) return '—'
   // Session ids look like 20260731_095257_378ad5 — keep the readable prefix.
@@ -1504,7 +1530,7 @@ function ActivityTab({ data }) {
           jsx(StatCard, { label: 'Deliveries', value: String(deliveries.length), sub: 'queued messages', icon: 'send', accent: ACCENTS.gold, index: 3 })
         ]
       }),
-      // Recent sessions — card grid so rows fill the width (no stretched table)
+      // Recent sessions — grouped by source category in columns
       jsx(Section, {
         title: 'Recent sessions',
         icon: 'history',
@@ -1512,36 +1538,60 @@ function ActivityTab({ data }) {
         extra: `${sessions.length} shown`,
         children: sessions.length
           ? jsxs('div', {
-              className: 'grid gap-2',
-              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
-              children: withModel.map((s, i) => {
-                const tone = sourceTone[s.source] || ACCENTS.idle
+              className: 'grid gap-3',
+              style: { gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' },
+              children: CATEGORY_ORDER.map(cat => {
+                const meta = CATEGORY_META[cat]
+                const group = withModel.filter(s => (s.source || 'other') === cat)
+                if (!group.length) return null
                 return jsxs('div', {
-                  key: s.id,
-                  className: cn(
-                    'hc-fade-up flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2 transition-colors hover:bg-(--ui-bg-quaternary)'
-                  ),
-                  style: { animationDelay: `${i * 20}ms` },
+                  key: cat,
+                  className: 'flex flex-col gap-2',
                   children: [
-                    jsx('span', {
-                      className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
-                      style: { backgroundColor: tone.bg, color: tone.text },
-                      children: s.source || '?'
+                    // Column header: category name + what it means
+                    jsxs('div', {
+                      className: 'flex items-center gap-2',
+                      children: [
+                        jsx('div', {
+                          className: 'flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white',
+                          style: { background: `linear-gradient(135deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)` },
+                          children: jsx(Codicon, { name: meta.icon, className: 'text-[0.6875rem]' })
+                        }),
+                        jsx('span', { className: 'text-xs font-semibold capitalize text-(--ui-text-primary)', children: cat }),
+                        jsx('span', { className: 'rounded-full px-1.5 py-0.5 text-[0.5625rem] font-semibold tabular-nums', style: { backgroundColor: meta.accent.bg, color: meta.accent.text }, children: String(group.length) }),
+                        jsx('span', { className: 'ml-auto max-w-[9rem] truncate text-[0.5625rem] text-(--ui-text-quaternary)', title: meta.desc, children: meta.desc })
+                      ]
                     }),
-                    jsx('span', {
-                      className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)',
-                      title: s.id,
-                      children: s.label || sessionShort(s.id)
-                    }),
-                    s.showModel
-                      ? jsx('span', { className: 'max-w-[6rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model })
-                      : null,
-                    jsx('span', {
-                      className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums',
-                      style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' },
-                      children: `${s.msg_count} msgs`
-                    }),
-                    jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
+                    // Session cards in this category
+                    jsxs('div', {
+                      className: 'flex flex-col gap-1.5',
+                      children: group.map((s, i) => {
+                        const tone = sourceTone[s.source] || ACCENTS.idle
+                        return jsxs('div', {
+                          key: s.id,
+                          className: cn(
+                            'hc-fade-up flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-2.5 py-1.5 transition-colors hover:bg-(--ui-bg-quaternary)'
+                          ),
+                          style: { animationDelay: `${i * 20}ms` },
+                          children: [
+                            jsx('span', {
+                              className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)',
+                              title: s.id,
+                              children: s.label || sessionShort(s.id)
+                            }),
+                            s.showModel
+                              ? jsx('span', { className: 'max-w-[5rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model })
+                              : null,
+                            jsx('span', {
+                              className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums',
+                              style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' },
+                              children: `${s.msg_count} msgs`
+                            }),
+                            jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
+                          ]
+                        })
+                      })
+                    })
                   ]
                 })
               })
