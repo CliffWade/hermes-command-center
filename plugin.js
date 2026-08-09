@@ -1625,7 +1625,7 @@ function ActivityHeatmap({ heatmap }) {
               style: { gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' },
               children: hours.map((n, h) => {
                 const pct = n / maxHour
-                const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`
+                const label = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`
                 return jsxs('div', {
                   key: h,
                   className: 'group relative flex h-9 flex-col items-center justify-center gap-0.5 rounded-md transition-transform hover:scale-105',
@@ -1642,7 +1642,7 @@ function ActivityHeatmap({ heatmap }) {
                     n > 0
                       ? jsx('span', {
                           className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
-                          children: `${label} (hour ${h}): ${fmtNum(n)} msgs`
+                          children: `${label} (hour ${h}): ${fmtNum(n)} messages`
                         })
                       : null
                   ]
@@ -1674,11 +1674,17 @@ function ActivityHeatmap({ heatmap }) {
                       className: 'group relative flex flex-col items-center gap-1 rounded-md p-1.5 transition-transform hover:scale-105',
                       style: { backgroundColor: heatColor(pct) },
                       children: [
-                        jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
+                        jsxs('div', {
+                          className: 'flex items-baseline gap-0.5',
+                          children: [
+                            jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
+                            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'messages' })
+                          ]
+                        }),
                         jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: short }),
                         jsx('span', {
                           className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
-                          children: `${d.date}: ${fmtNum(d.count)} msgs`
+                          children: `${d.date}: ${fmtNum(d.count)} messages`
                         })
                       ]
                     })
@@ -1905,7 +1911,7 @@ function ActivityTab({ data }) {
                             jsx('span', {
                               className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums',
                               style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' },
-                              children: `${s.msg_count} msgs`
+                              children: `${fmtNum(s.msg_count)} messages`
                             }),
                             jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
                           ]
