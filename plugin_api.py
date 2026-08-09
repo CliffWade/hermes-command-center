@@ -597,3 +597,101 @@ async def activity():
         pass
 
     return out
+
+
+# ── usage & credits ─────────────────────────────────────────────────────────
+
+def _load_env_secret(key: str) -> str:
+    """Read a secret from ~/.hermes/.env without importing the app config."""
+    env_file = _hermes_home() / ".env"
+    try:
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith(key + "="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return ""
+
+
+@router.get("/usage")
+async def usage():
+    """Provider usage from local state + live balances where an API allows.
+
+    Honest by design: token usage is real (state.db session_model_usage);
+    dollar balances are only reported for providers with a queryable
+    balance API (OpenRouter). Subscriptions/prepaid providers expose no
+    balance, so they show usage only.
+    """
+    out = {"providers": [], "credits": []}
+
+    # 1) Local provider usage from session_model_usage.
+    rows = _query(
+        "SELECT billing_provider, billing_mode, "
+        "SUM(input_tokens), SUM(output_tokens), SUM(cache_read_tokens), "
+        "SUM(reasoning_tokens), SUM(api_call_count), SUM(estimated_cost_usd), "
+        "COUNT(DISTINCT model), COUNT(DISTINCT session_id) "
+        "FROM session_model_usage GROUP BY billing_provider, billing_mode "
+        "ORDER BY SUM(input_tokens + output_tokens) DESC",
+    )
+    for r in rows:
+        provider = r[0] or "unknown"
+        out["providers"].append({
+            "provider": provider,
+            "mode": r[1] or "",
+            "input": _int(r[2]),
+            "output": _int(r[3]),
+            "cache_read": _int(r[4]),
+            "reasoning": _int(r[5]),
+            "api_calls": _int(r[6]),
+            "cost": _f(r[7]),
+            "models": _int(r[8]),
+            "sessions": _int(r[9]),
+        })
+
+    # 2) Live balances where an API key is configured. Only OpenRouter has a
+    #    public balance endpoint today; add others (xAI, etc.) as they appear.
+    or_key = _load_env_secret("OPENROUTER_API_KEY")
+    if or_key:
+        try:
+            import urllib.request
+            def _get(path):
+                req = urllib.request.Request(
+                    f"https://openrouter.ai/api/v1{path}",
+                    headers={"Authorization": f"Bearer {or_key}"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            d = _get("/auth/key").get("data", {})
+            # total_credits lives on /credits, not /auth/key.
+            try:
+                total = float(_get("/credits").get("data", {}).get("total_credits") or 0)
+            except Exception:
+                total = 0.0
+            usage_amt = float(d.get("usage") or 0)
+            limit = d.get("limit")
+            limit_remaining = d.get("limit_remaining")
+            out["credits"].append({
+                "provider": "openrouter",
+                "label": "OpenRouter",
+                "total_credits": _f(total),
+                "total_usage": _f(usage_amt),
+                "remaining": _f(total - usage_amt) if total else None,
+                "limit": _f(limit) if isinstance(limit, (int, float)) else None,
+                "limit_remaining": _f(limit_remaining) if isinstance(limit_remaining, (int, float)) else None,
+                "usage_daily": _f(d.get("usage_daily") or 0),
+                "usage_weekly": _f(d.get("usage_weekly") or 0),
+                "usage_monthly": _f(d.get("usage_monthly") or 0),
+                "is_free_tier": bool(d.get("is_free_tier")),
+                "expires_at": d.get("expires_at"),
+            })
+        except Exception:
+            # Balance fetch failed — report that the provider exists but the
+            # live check errored, rather than silently hiding it.
+            out["credits"].append({
+                "provider": "openrouter",
+                "label": "OpenRouter",
+                "error": "live balance check failed",
+            })
+
+    return out

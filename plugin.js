@@ -35,7 +35,7 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 import { useEffect, useState } from 'react'
 
 const ID = 'command-center'
-const TABS = ['overview', 'activity', 'cron', 'plugins', 'models', 'skills', 'memory']
+const TABS = ['overview', 'activity', 'usage', 'cron', 'plugins', 'models', 'skills', 'memory']
 
 // Fixed accent palette (deliberately NOT theme accent so each section stays
 // distinguishable, same approach as the achievements sections).
@@ -53,6 +53,7 @@ const ACCENTS = {
 const TAB_META = {
   overview: { icon: 'dashboard', accent: ACCENTS.blue },
   activity: { icon: 'history', accent: ACCENTS.rose },
+  usage: { icon: 'graph-line', accent: ACCENTS.gold },
   cron: { icon: 'clock', accent: ACCENTS.teal },
   plugins: { icon: 'plug', accent: ACCENTS.purple },
   models: { icon: 'graph', accent: ACCENTS.gold },
@@ -1663,6 +1664,163 @@ function ActivityTab({ data }) {
   })
 }
 
+// ── Usage & credits tab ────────────────────────────────────────────────────
+
+// Provider display names + icons + accents for the usage cards.
+const PROVIDER_META = {
+  'opencode-go': { label: 'OpenCode GO', icon: 'code', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
+  'openai-codex': { label: 'OpenAI Codex', icon: 'sparkle', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  openrouter: { label: 'OpenRouter', icon: 'globe', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
+  auto: { label: 'Auto (routing)', icon: 'arrow-swap', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
+  anthropic: { label: 'Anthropic', icon: 'comment', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } }
+}
+
+function UsageTab({ data }) {
+  const credits = data.credits || []
+  const providers = data.providers || []
+  const totalTokens = providers.reduce((acc, p) => acc + (p.input || 0) + (p.output || 0), 0)
+  const totalCalls = providers.reduce((acc, p) => acc + (p.api_calls || 0), 0)
+  const totalCost = providers.reduce((acc, p) => acc + (p.cost || 0), 0)
+
+  return jsxs('div', {
+    className: 'flex flex-col gap-4 p-6',
+    children: [
+      // Summary strip
+      jsxs('div', {
+        className: 'grid gap-3',
+        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' },
+        children: [
+          jsx(StatCard, { label: 'Providers', value: String(providers.length), sub: 'with recorded usage', icon: 'globe', accent: ACCENTS.blue, index: 0 }),
+          jsx(StatCard, { label: 'Tokens (all-time)', value: fmtNum(totalTokens), sub: 'input + output', icon: 'graph-line', accent: ACCENTS.gold, index: 1 }),
+          jsx(StatCard, { label: 'API calls', value: fmtNum(totalCalls), sub: 'across providers', icon: 'play', accent: ACCENTS.teal, index: 2 }),
+          jsx(StatCard, { label: 'Estimated cost', value: totalCost ? `$${totalCost.toFixed(2)}` : 'n/a', sub: 'where recorded', icon: 'credit-card', accent: ACCENTS.rose, index: 3 })
+        ]
+      }),
+      // Live credits — providers with a queryable balance
+      jsx(Section, {
+        title: 'Credits & balance',
+        icon: 'credit-card',
+        accent: ACCENTS.gold,
+        extra: credits.length ? 'live' : 'no balance API configured',
+        children: credits.length
+          ? jsxs('div', {
+              className: 'grid gap-3',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' },
+              children: credits.map((c, i) => {
+                if (c.error) {
+                  return jsx('div', {
+                    key: c.provider,
+                    className: 'hc-fade-up flex items-center gap-2 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-4',
+                    style: { animationDelay: `${i * 40}ms` },
+                    children: [
+                      jsx('span', { className: 'text-xs font-semibold text-(--ui-text-primary)', children: c.label }),
+                      jsx('span', { className: 'ml-auto text-xs text-(--ui-error)', children: c.error })
+                    ]
+                  })
+                }
+                const remaining = c.remaining
+                const total = c.total_credits
+                const pct = total ? Math.round((remaining / total) * 100) : null
+                return jsxs('div', {
+                  key: c.provider,
+                  className: 'hc-fade-up flex items-center gap-4 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg',
+                  style: { animationDelay: `${i * 40}ms` },
+                  children: [
+                    jsx(RingGauge, {
+                      value: remaining,
+                      max: total || remaining || 1,
+                      label: 'left',
+                      from: pct != null && pct < 25 ? '#d64545' : '#2f9e63',
+                      to: pct != null && pct < 25 ? '#d4578f' : '#0f9a9a',
+                      size: 76
+                    }),
+                    jsxs('div', {
+                      className: 'min-w-0 flex-1',
+                      children: [
+                        jsx('span', { className: 'block text-sm font-bold text-(--ui-text-primary)', children: c.label }),
+                        jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-tertiary)', children: remaining != null ? `$${remaining.toFixed(2)} remaining of $${total.toFixed(2)}` : `$${c.total_usage.toFixed(2)} used` }),
+                        jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-quaternary)', children: c.is_free_tier ? 'free tier' : c.limit != null ? `limit $${c.limit.toFixed(2)}` : 'prepaid credits' })
+                      ]
+                    })
+                  ]
+                })
+              })
+            })
+          : jsx('div', {
+              className: 'rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-4 text-xs text-(--ui-text-tertiary)',
+              children: 'No provider with a queryable balance API is configured. Add an OPENROUTER_API_KEY to ~/.hermes/.env to see live credits.'
+            })
+      }),
+      // Provider usage — real token data from local state
+      jsx(Section, {
+        title: 'Provider usage',
+        icon: 'graph-line',
+        accent: ACCENTS.gold,
+        extra: `${providers.length} providers`,
+        children: providers.length
+          ? jsxs('div', {
+              className: 'grid gap-2.5',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
+              children: providers.map((p, i) => {
+                const meta = PROVIDER_META[p.provider] || { label: p.provider, icon: 'plug', accent: { from: '#8a8f98', to: '#c3c8cf', text: '#8a8f98', bg: 'rgba(138,143,152,0.12)' } }
+                const total = (p.input || 0) + (p.output || 0)
+                const maxTotal = Math.max(...providers.map(x => (x.input || 0) + (x.output || 0)), 1)
+                return jsxs('div', {
+                  key: p.provider + p.mode,
+                  className: cn(
+                    'hc-glow hc-fade-up flex flex-col gap-2.5 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-lg'
+                  ),
+                  style: { animationDelay: `${i * 30}ms` },
+                  children: [
+                    jsxs('div', {
+                      className: 'flex items-center gap-2.5',
+                      children: [
+                        jsx('div', {
+                          className: 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white',
+                          style: { background: `linear-gradient(135deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)`, boxShadow: '0 4px 10px rgba(0,0,0,0.18)' },
+                          children: jsx(Codicon, { name: meta.icon, className: 'text-sm' })
+                        }),
+                        jsxs('div', {
+                          className: 'min-w-0 flex-1',
+                          children: [
+                            jsx('span', { className: 'block truncate text-xs font-bold text-(--ui-text-primary)', children: meta.label }),
+                            jsx('span', { className: 'block truncate text-[0.625rem] text-(--ui-text-tertiary)', children: p.mode || 'default routing' })
+                          ]
+                        }),
+                        jsx('span', {
+                          className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums',
+                          style: { backgroundColor: meta.accent.bg, color: meta.accent.text },
+                          children: p.cost ? `$${p.cost.toFixed(2)}` : fmtNum(total)
+                        })
+                      ]
+                    }),
+                    jsx('div', {
+                      className: 'h-1.5 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
+                      children: jsx('div', {
+                        className: 'h-full rounded-full',
+                        style: { width: `${Math.max(2, (total / maxTotal) * 100)}%`, background: `linear-gradient(90deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)` }
+                      })
+                    }),
+                    jsxs('div', {
+                      className: 'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] text-(--ui-text-tertiary)',
+                      children: [
+                        jsx('span', { children: `${fmtNum(p.input)} in` }),
+                        jsx('span', { children: `${fmtNum(p.output)} out` }),
+                        p.cache_read ? jsx('span', { children: `${fmtNum(p.cache_read)} cache` }) : null,
+                        p.reasoning ? jsx('span', { children: `${fmtNum(p.reasoning)} think` }) : null,
+                        jsx('span', { className: 'ml-auto text-(--ui-text-quaternary)', children: `${p.api_calls} calls · ${p.models} models` })
+                      ]
+                    })
+                  ]
+                })
+              })
+            })
+          : jsx(EmptyState, { title: 'No provider usage', description: 'No token usage recorded yet.' })
+      })
+    ]
+  })
+}
+
 // ── main page ──────────────────────────────────────────────────────────────
 
 function CommandCenterPage() {
@@ -1731,6 +1889,8 @@ function CommandCenterPage() {
                 ? jsx(OverviewTab, { data, onRefresh: refresh })
                 : tab === 'activity'
                   ? jsx(ActivityTab, { data })
+                  : tab === 'usage'
+                    ? jsx(UsageTab, { data })
                 : tab === 'cron'
                   ? jsx(CronTab, { data })
                   : tab === 'plugins'
