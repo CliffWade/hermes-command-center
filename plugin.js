@@ -2109,15 +2109,14 @@ function SystemTab({ data }) {
         title: 'Environment',
         icon: 'server',
         accent: ACCENTS.blue,
+        extra: 'install details',
         children: jsxs('div', {
-          className: 'grid gap-1.5',
-          style: { gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' },
+          className: 'grid gap-2',
+          style: { gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' },
           children: [
-            jsx(EnvRow, { k: 'Version', v: data.version || 'dev checkout' }),
-            jsx(EnvRow, { k: 'Commit', v: data.commit || '—' }),
-            jsx(EnvRow, { k: 'Python', v: data.python || '—' }),
-            jsx(EnvRow, { k: 'Home', v: data.home || '—' }),
-            jsx(EnvRow, { k: 'Uptime', v: fmtUptime(data.uptime_sec) })
+            jsx(EnvCard, { icon: 'git-commit', label: 'Build', accent: ACCENTS.purple, rows: [['commit', data.commit || '—'], ['version', data.version || 'dev checkout']] }),
+            jsx(EnvCard, { icon: 'code', label: 'Runtime', accent: ACCENTS.teal, rows: [['python', data.python || '—'], ['uptime', fmtUptime(data.uptime_sec)]] }),
+            jsx(EnvCard, { icon: 'home', label: 'Home', accent: ACCENTS.gold, rows: [['path', data.home || '—']] })
           ]
         })
       })
@@ -2125,12 +2124,40 @@ function SystemTab({ data }) {
   })
 }
 
-function EnvRow({ k, v }) {
+// Compact env card: gradient tile + label + colored value rows.
+function EnvCard({ icon, label, accent, rows }) {
   return jsxs('div', {
-    className: 'flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2',
+    className: 'hc-fade-up flex items-start gap-2.5 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3',
     children: [
-      jsx('span', { className: 'w-20 shrink-0 text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: k }),
-      jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] text-(--ui-text-primary)', title: v, children: v })
+      jsx('div', {
+        className: 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white',
+        style: { background: `linear-gradient(135deg, ${accent.text} 0%, ${accent.to || accent.text} 100%)`, boxShadow: '0 4px 10px rgba(0,0,0,0.15)' },
+        children: jsx(Codicon, { name: icon, className: 'text-sm' })
+      }),
+      jsxs('div', {
+        className: 'min-w-0 flex-1',
+        children: [
+          jsx('span', { className: 'block text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: label }),
+          jsxs('div', {
+            className: 'mt-0.5 flex flex-col gap-0.5',
+            children: rows.map(r => (
+              jsxs('div', {
+                key: r[0],
+                className: 'flex items-baseline gap-1.5 text-[0.6875rem]',
+                children: [
+                  jsx('span', { className: 'shrink-0 text-[0.5625rem] uppercase text-(--ui-text-quaternary)', children: r[0] }),
+                  jsx('span', {
+                    className: 'min-w-0 flex-1 truncate font-medium',
+                    style: { color: accent.text },
+                    title: r[1],
+                    children: r[1]
+                  })
+                ]
+              })
+            ))
+          })
+        ]
+      })
     ]
   })
 }
