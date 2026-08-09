@@ -871,10 +871,36 @@ async def system():
     except Exception:
         pass
 
-    # Update check: compare the running commit against the latest GitHub
-    # release. Read-only; failure just leaves update=None.
+    # Update check: compare the INSTALLED version against the latest GitHub
+    # release tag. Naive "a tag exists" checks produce false positives, so
+    # only flag an update when the release is genuinely newer.
     out["update"] = None
-    if out["commit"]:
+    try:
+        # Resolve the installed version: version file > env > package metadata.
+        installed = ""
+        ver_file = home / "version"
+        if ver_file.exists():
+            installed = ver_file.read_text(encoding="utf-8").strip()
+        if not installed:
+            installed = os.environ.get("HERMES_VERSION", "")
+        if not installed:
+            try:
+                # Hermes has both a semver (0.20.0) and a date release
+                # (2026.8.3); GitHub tags use the date form, so compare
+                # date-against-date to avoid false updates.
+                from hermes_cli import __release_date__ as _rd
+                installed = str(_rd)
+            except Exception:
+                try:
+                    from hermes_cli import __version__
+                    installed = str(__version__)
+                except Exception:
+                    installed = ""
+        out["version"] = out["version"] or installed
+    except Exception:
+        pass
+
+    if installed:
         try:
             import urllib.request
             req = urllib.request.Request(
@@ -883,12 +909,13 @@ async def system():
             )
             with urllib.request.urlopen(req, timeout=8) as resp:
                 d = json.loads(resp.read().decode("utf-8"))
-            tag = (d.get("tag_name") or "").strip()
+            tag = (d.get("tag_name") or "").strip().lstrip("vV")
             published = d.get("published_at") or ""
-            if tag:
+            if tag and _version_key(tag) > _version_key(installed):
                 out["update"] = {
                     "available": True,
-                    "tag": tag,
+                    "current": installed,
+                    "tag": d.get("tag_name") or tag,
                     "published_at": published,
                     "url": d.get("html_url") or "",
                     "notes": (d.get("body") or "")[:300],
@@ -917,6 +944,14 @@ async def system():
         out["config"] = {}
 
     return out
+
+
+def _version_key(v: str):
+    """Turn a version like '2026.8.3' or '0.20.0' into a comparable tuple.
+    Handles dotted segments plus optional suffix text (e.g. '2026.8.3.post1')."""
+    import re
+    nums = re.findall(r"\d+", v or "")
+    return tuple(int(n) for n in nums[:4]) or (0,)
 
 
 def _parse_etime(s: str) -> int:
