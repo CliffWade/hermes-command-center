@@ -1667,12 +1667,24 @@ function ActivityTab({ data }) {
 // ── Usage & credits tab ────────────────────────────────────────────────────
 
 // Provider display names + icons + accents for the usage cards.
+// Any provider with rows in state.db appears automatically (the backend
+// groups by billing_provider) — these maps only give known providers a
+// friendly label + icon; unknown ones fall back to a neutral card.
 const PROVIDER_META = {
   'opencode-go': { label: 'OpenCode GO', icon: 'code', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
   'openai-codex': { label: 'OpenAI Codex', icon: 'sparkle', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
   openrouter: { label: 'OpenRouter', icon: 'globe', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
-  auto: { label: 'Auto (routing)', icon: 'arrow-swap', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
-  anthropic: { label: 'Anthropic', icon: 'comment', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } }
+  anthropic: { label: 'Anthropic', icon: 'comment', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  openai: { label: 'OpenAI', icon: 'sparkle', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  gemini: { label: 'Google Gemini', icon: 'sparkle', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
+  xai: { label: 'xAI (Grok)', icon: 'comment', accent: { from: '#d64545', to: '#f07ab0', text: '#d64545', bg: 'rgba(214,69,69,0.12)' } },
+  grok: { label: 'xAI (Grok)', icon: 'comment', accent: { from: '#d64545', to: '#f07ab0', text: '#d64545', bg: 'rgba(214,69,69,0.12)' } },
+  deepseek: { label: 'DeepSeek', icon: 'graph', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
+  mistral: { label: 'Mistral', icon: 'sparkle', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
+  groq: { label: 'Groq', icon: 'zap', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
+  together: { label: 'Together AI', icon: 'graph', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  fireworks: { label: 'Fireworks', icon: 'zap', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  auto: { label: 'Auto (routing)', icon: 'arrow-swap', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } }
 }
 
 function UsageTab({ data }) {
