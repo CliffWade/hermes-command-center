@@ -524,7 +524,9 @@ const LOG_LEVEL_STYLE = {
   DEBUG: { text: '#8a8f98', bg: 'rgba(138,143,152,0.12)' }
 }
 
-// Compact log viewer: level pill + time + truncated message per row.
+// Compact log viewer: each entry is a card in a responsive grid, with a
+// level pill + time + truncated message. Cards fill the width in multiple
+// columns like every other tab — no full-width stretched rows.
 function ErrorLogViewer({ lines }) {
   const parsed = lines.map(parseLogLine)
   const errorCount = parsed.filter(l => l.level === 'ERROR').length
@@ -536,15 +538,16 @@ function ErrorLogViewer({ lines }) {
     accent: ACCENTS.red,
     extra: errorCount ? `${errorCount} errors · ${warnCount} warnings` : `${warnCount} warnings`,
     children: jsxs('div', {
-      className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome)',
+      className: 'grid gap-2',
+      style: { gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' },
       children: parsed.map((l, i) => {
         const style = LOG_LEVEL_STYLE[l.level] || LOG_LEVEL_STYLE.INFO
         return jsxs('div', {
           key: i,
           className: cn(
-            'flex items-center gap-2 px-3 py-1.5 text-[0.625rem] leading-snug transition-colors hover:bg-(--ui-bg-quaternary)',
-            i > 0 && 'border-t border-(--ui-stroke-secondary)'
+            'hc-fade-up flex items-start gap-2 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg'
           ),
+          style: { animationDelay: `${i * 25}ms` },
           children: [
             l.level
               ? jsx('span', {
@@ -553,13 +556,18 @@ function ErrorLogViewer({ lines }) {
                   children: l.level
                 })
               : null,
-            l.time
-              ? jsx('span', { className: 'shrink-0 font-mono tabular-nums text-(--ui-text-quaternary)', title: l.ts, children: l.time })
-              : null,
-            jsx('span', {
-              className: 'min-w-0 flex-1 truncate font-mono text-(--ui-text-secondary)',
-              title: `${l.ts} ${l.level} ${l.msg}`,
-              children: l.msg
+            jsxs('div', {
+              className: 'min-w-0 flex-1',
+              children: [
+                l.time
+                  ? jsx('span', { className: 'block font-mono text-[0.5625rem] tabular-nums text-(--ui-text-quaternary)', title: l.ts, children: l.time })
+                  : null,
+                jsx('span', {
+                  className: 'mt-0.5 block font-mono text-[0.625rem] leading-snug text-(--ui-text-secondary)',
+                  title: `${l.ts} ${l.level} ${l.msg}`,
+                  children: l.msg
+                })
+              ]
             })
           ]
         })
