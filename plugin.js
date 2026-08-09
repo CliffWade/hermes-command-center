@@ -1592,13 +1592,30 @@ function ActivityHeatmap({ heatmap }) {
   const maxDay = Math.max(...days.map(d => d.count), 1)
   const total7d = days.reduce((a, d) => a + d.count, 0)
 
-  // Gradient from soft blue to deep purple as activity climbs.
+  // Rainbow heat scale: slate -> blue -> teal -> green -> gold -> orange
+  // -> pink -> red as activity climbs, so every intensity band is distinct.
+  const STOPS = [
+    [0.00, [148, 163, 184]], // slate (low)
+    [0.15, [47, 127, 212]],  // blue
+    [0.35, [15, 154, 154]],  // teal
+    [0.50, [47, 158, 99]],   // green
+    [0.65, [224, 166, 61]],  // gold
+    [0.80, [217, 119, 6]],   // orange
+    [0.92, [212, 87, 143]],  // pink
+    [1.00, [214, 69, 69]]    // red (peak)
+  ]
   const heatColor = pct => {
-    const t = Math.min(1, pct)
-    if (t <= 0.05) return 'rgba(47,127,212,0.08)'
-    if (t < 0.35) return `rgba(47,127,212,${0.14 + t * 0.5})`
-    if (t < 0.7) return `rgba(123,95,217,${0.3 + (t - 0.35) * 0.8})`
-    return `rgba(212,87,143,${0.45 + (t - 0.7) * 0.55})`
+    const t = Math.min(1, Math.max(0, pct))
+    if (t <= 0.02) return 'rgba(148,163,184,0.10)'
+    let lo = STOPS[0], hi = STOPS[STOPS.length - 1]
+    for (let i = 0; i < STOPS.length - 1; i++) {
+      if (t >= STOPS[i][0] && t <= STOPS[i + 1][0]) { lo = STOPS[i]; hi = STOPS[i + 1]; break }
+    }
+    const span = hi[0] - lo[0] || 1
+    const f = (t - lo[0]) / span
+    const c = lo[1].map((v, i) => Math.round(v + (hi[1][i] - v) * f))
+    const a = 0.28 + t * 0.72 // stronger alpha as activity climbs
+    return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(2)})`
   }
 
   return jsx(Section, {
