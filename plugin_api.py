@@ -212,12 +212,30 @@ async def overview():
                 con.close()
     except Exception:
         pass
+    # Gateway status from lifecycle JSON + heartbeat file.
+    gateway = {"phase": "unknown", "pid": None, "exited_at": None, "heartbeat_age": None}
+    try:
+        life = _read_json(home / "state" / "gateway.lifecycle.json")
+        if isinstance(life, dict):
+            gateway["phase"] = life.get("phase") or "unknown"
+            gateway["pid"] = life.get("pid")
+            gateway["exited_at"] = life.get("exited_at") or None
+    except Exception:
+        pass
+    try:
+        hb = home / "state" / "gateway.heartbeat"
+        if hb.exists():
+            m = hb.stat().st_mtime
+            gateway["heartbeat_age"] = max(0, int(now - m))
+    except Exception:
+        pass
     return {
         "processes": processes,
         "tokens_24h": tokens,
         "cron_24h": cron,
         "errors_24h": errors,
         "memory": memory,
+        "gateway": gateway,
         "generated_at": int(now),
     }
 
@@ -379,6 +397,53 @@ async def models():
             "cost": _f(r[4]),
         })
 
+    # Reasoning tokens per model (all-time, session_model_usage).
+    reason_rows = _query(
+        "SELECT model, SUM(reasoning_tokens), SUM(api_call_count), "
+        "COUNT(DISTINCT session_id) "
+        "FROM session_model_usage GROUP BY model",
+    )
+    reason_map = {}
+    for r in reason_rows:
+        reason_map[r[0] or "unknown"] = {
+            "reasoning_tokens": _int(r[1]),
+            "api_calls": _int(r[2]),
+            "sessions": _int(r[3]),
+        }
+    for m in out["by_model"]:
+        extra = reason_map.get(m["model"], {})
+        m["reasoning_tokens"] = extra.get("reasoning_tokens", 0)
+        m["api_calls"] = extra.get("api_calls", 0)
+        m["sessions"] = extra.get("sessions", 0)
+
+    # Per-task token breakdown (30d).
+    task_rows = _query(
+        "SELECT COALESCE(NULLIF(task, ''), 'chat'), SUM(input_tokens + output_tokens) "
+        "FROM session_model_usage WHERE last_seen >= ? "
+        "GROUP BY COALESCE(NULLIF(task, ''), 'chat') "
+        "ORDER BY SUM(input_tokens + output_tokens) DESC",
+        (now - 30 * 86400,),
+    )
+    out["by_task"] = [{"task": r[0] or "chat", "tokens": _int(r[1])} for r in task_rows]
+
+    # Top sessions by tokens (30d) — makes the burn concrete.
+    top_rows = _query(
+        "SELECT session_id, model, SUM(input_tokens + output_tokens), "
+        "SUM(api_call_count), MAX(last_seen) "
+        "FROM session_model_usage WHERE last_seen >= ? "
+        "GROUP BY session_id ORDER BY SUM(input_tokens + output_tokens) DESC LIMIT 8",
+        (now - 30 * 86400,),
+    )
+    out["top_sessions"] = []
+    for r in top_rows:
+        out["top_sessions"].append({
+            "session_id": r[0] or "",
+            "model": r[1] or "",
+            "tokens": _int(r[2]),
+            "api_calls": _int(r[3]),
+            "last_seen": _int(r[4]) or 0,
+        })
+
     for day in range(14, -1, -1):
         start = now - day * 86400
         end = start + 86400
@@ -416,3 +481,79 @@ async def skills():
                 "state": meta.get("state") or "active",
             })
     return {"skills": rows}
+
+
+# ── activity ────────────────────────────────────────────────────────────────
+
+def _state_db() -> Path:
+    return _hermes_home() / "state.db"
+
+
+@router.get("/activity")
+async def activity():
+    """Recent sessions, delegations, and delivery obligations."""
+    out = {"sessions": [], "delegations": [], "deliveries": []}
+    db = _state_db()
+    if not db.exists():
+        return out
+
+    try:
+        import sqlite3
+        con = sqlite3.connect(db)
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
+
+        # Recent sessions (most active first by message count).
+        rows = cur.execute(
+            "SELECT s.id, s.source, s.model, s.started_at, "
+            "COALESCE(m.msg_count, 0) AS msg_count, "
+            "COALESCE(m.last_msg, 0) AS last_msg "
+            "FROM sessions s LEFT JOIN ("
+            "  SELECT session_id, COUNT(*) AS msg_count, MAX(timestamp) AS last_msg "
+            "  FROM messages GROUP BY session_id"
+            ") m ON m.session_id = s.id "
+            "ORDER BY COALESCE(m.last_msg, 0) DESC LIMIT 12"
+        ).fetchall()
+        for r in rows:
+            out["sessions"].append({
+                "id": r["id"],
+                "source": r["source"] or "",
+                "model": r["model"] or "",
+                "started_at": _int(r["started_at"]) or 0,
+                "msg_count": _int(r["msg_count"]),
+                "last_msg": _int(r["last_msg"]) or 0,
+            })
+
+        # Recent delegations.
+        drows = cur.execute(
+            "SELECT delegation_id, origin_session, state, dispatched_at, completed_at "
+            "FROM async_delegations ORDER BY COALESCE(dispatched_at, 0) DESC LIMIT 8"
+        ).fetchall()
+        for r in drows:
+            out["delegations"].append({
+                "id": r["delegation_id"],
+                "origin_session": r["origin_session"] or "",
+                "state": r["state"] or "",
+                "dispatched_at": _int(r["dispatched_at"]) or 0,
+                "completed_at": _int(r["completed_at"]) or 0,
+            })
+
+        # Recent delivery obligations.
+        orows = cur.execute(
+            "SELECT obligation_id, session_key, platform, state, created_at "
+            "FROM delivery_obligations ORDER BY COALESCE(created_at, 0) DESC LIMIT 8"
+        ).fetchall()
+        for r in orows:
+            out["deliveries"].append({
+                "id": r["obligation_id"],
+                "session_key": r["session_key"] or "",
+                "platform": r["platform"] or "",
+                "state": r["state"] or "",
+                "created_at": _int(r["created_at"]) or 0,
+            })
+
+        con.close()
+    except Exception:
+        pass
+
+    return out

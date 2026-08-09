@@ -35,7 +35,7 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 import { useEffect, useState } from 'react'
 
 const ID = 'command-center'
-const TABS = ['overview', 'cron', 'plugins', 'models', 'skills', 'memory']
+const TABS = ['overview', 'activity', 'cron', 'plugins', 'models', 'skills', 'memory']
 
 // Fixed accent palette (deliberately NOT theme accent so each section stays
 // distinguishable, same approach as the achievements sections).
@@ -52,6 +52,7 @@ const ACCENTS = {
 
 const TAB_META = {
   overview: { icon: 'dashboard', accent: ACCENTS.blue },
+  activity: { icon: 'history', accent: ACCENTS.rose },
   cron: { icon: 'clock', accent: ACCENTS.teal },
   plugins: { icon: 'plug', accent: ACCENTS.purple },
   models: { icon: 'graph', accent: ACCENTS.gold },
@@ -477,6 +478,29 @@ function Section({ title, icon, accent, children, extra }) {
   })
 }
 
+// ── gateway strip ──────────────────────────────────────────────────────────
+
+// Compact gateway status bar under the hero: phase, pid, heartbeat age.
+function GatewayStrip({ gateway }) {
+  const phase = gateway.phase || 'unknown'
+  const live = phase === 'running' || phase === 'starting'
+  const heartbeat = gateway.heartbeat_age != null ? gateway.heartbeat_age : null
+  const hbFresh = heartbeat != null && heartbeat < 120
+  const tone = live && hbFresh ? 'ok' : phase === 'starting' ? 'warn' : 'idle'
+
+  return jsxs('div', {
+    className: 'flex items-center gap-3 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-4 py-2.5',
+    children: [
+      jsx(StatusPill, { tone, children: `gateway ${phase}` }),
+      gateway.pid ? jsx('span', { className: 'font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: `pid ${gateway.pid}` }) : null,
+      heartbeat != null
+        ? jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: heartbeat < 120 ? 'heartbeat: fresh' : `heartbeat: ${Math.round(heartbeat / 60)}m ago` })
+        : jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: 'no heartbeat file' }),
+      jsx('span', { className: 'ml-auto text-[0.625rem] text-(--ui-text-quaternary)', children: gateway.exited_at ? `last exit ${fmtRelTime(new Date(gateway.exited_at))}` : '' })
+    ]
+  })
+}
+
 // ── Overview tab ───────────────────────────────────────────────────────────
 
 function OverviewTab({ data, onRefresh }) {
@@ -507,6 +531,7 @@ function OverviewTab({ data, onRefresh }) {
     className: 'flex flex-col gap-4 p-6',
     children: [
       jsx(HeroHeader, { processes: data.processes, onRefresh, health, healthColor, factors }),
+      jsx(GatewayStrip, { gateway: data.gateway || {} }),
       jsxs('div', {
         className: 'grid gap-3',
         style: { gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' },
@@ -1070,7 +1095,8 @@ function ModelsTab({ data }) {
                               children: [
                                 jsx('span', { children: `${fmtNum(m.input)} in` }),
                                 jsx('span', { children: `${fmtNum(m.output)} out` }),
-                                jsx('span', { children: `${fmtNum(m.cache_read)} cache` })
+                                jsx('span', { children: `${fmtNum(m.cache_read)} cache` }),
+                                m.reasoning_tokens ? jsx('span', { children: `${fmtNum(m.reasoning_tokens)} think` }) : null
                               ]
                             })
                           ]
@@ -1116,6 +1142,71 @@ function ModelsTab({ data }) {
         children: daily.length
           ? jsx(AreaChart, { daily, height: 140, from: '#2f7fd4', to: '#0f9a9a' })
           : jsx(EmptyState, { title: 'No trend', description: 'No daily token data yet.' })
+      }),
+      // Per-task breakdown + top sessions side by side
+      jsxs('div', {
+        className: 'grid gap-4',
+        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' },
+        children: [
+          jsx(Section, {
+            title: 'Tokens by task (30d)',
+            icon: 'list-unordered',
+            accent: ACCENTS.gold,
+            extra: `${(data.by_task || []).length} tasks`,
+            children: (data.by_task || []).length
+              ? jsxs('div', {
+                  className: 'flex flex-col gap-2',
+                  children: (data.by_task || []).map((t, i) => {
+                    const maxTask = Math.max(...(data.by_task || []).map(x => x.tokens), 1)
+                    const c = modelColor(i)
+                    return jsxs('div', {
+                      key: t.task,
+                      className: 'flex flex-col gap-1',
+                      children: [
+                        jsxs('div', {
+                          className: 'flex items-center gap-2 text-xs',
+                          children: [
+                            jsx('span', { className: 'w-28 shrink-0 truncate font-medium text-(--ui-text-primary)', children: t.task }),
+                            jsx('span', { className: 'ml-auto shrink-0 tabular-nums text-(--ui-text-secondary)', children: fmtNum(t.tokens) })
+                          ]
+                        }),
+                        jsx('div', {
+                          className: 'h-1.5 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
+                          children: jsx('div', {
+                            className: 'h-full rounded-full transition-all',
+                            style: { width: `${Math.max(2, (t.tokens / maxTask) * 100)}%`, background: c.bar }
+                          })
+                        })
+                      ]
+                    })
+                  })
+                })
+              : jsx(EmptyState, { title: 'No task data', description: 'No per-task token data yet.' })
+          }),
+          jsx(Section, {
+            title: 'Top sessions (30d)',
+            icon: 'history',
+            accent: ACCENTS.blue,
+            extra: `${(data.top_sessions || []).length} shown`,
+            children: (data.top_sessions || []).length
+              ? jsxs('div', {
+                  className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                  children: (data.top_sessions || []).map((s, i) => (
+                    jsxs('div', {
+                      key: s.session_id,
+                      className: cn('flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                      children: [
+                        jsx('span', { className: 'shrink-0 font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: String(i + 1) }),
+                        jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: s.session_id, children: sessionShort(s.session_id) }),
+                        jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model }),
+                        jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-secondary)', children: fmtNum(s.tokens) })
+                      ]
+                    })
+                  ))
+                })
+              : jsx(EmptyState, { title: 'No session data', description: 'No per-session token data yet.' })
+          })
+        ]
       })
     ]
   })
@@ -1373,6 +1464,139 @@ function MemoryFileCard({ name, kind, chars, limit, pct, from, to, bar, index })
   })
 }
 
+// ── Activity tab ───────────────────────────────────────────────────────────
+
+function sessionShort(id) {
+  if (!id) return '—'
+  // Session ids look like 20260731_095257_378ad5 — keep the readable prefix.
+  return id.length > 18 ? id.slice(0, 18) + '…' : id
+}
+
+function ActivityTab({ data }) {
+  const sessions = data.sessions || []
+  const delegations = data.delegations || []
+  const deliveries = data.deliveries || []
+  const totalMsgs = sessions.reduce((acc, s) => acc + (s.msg_count || 0), 0)
+
+  const sourceTone = {
+    desktop: ACCENTS.blue,
+    tui: ACCENTS.purple,
+    cli: ACCENTS.teal,
+    cron: ACCENTS.gold
+  }
+
+  return jsxs('div', {
+    className: 'flex flex-col gap-4 p-6',
+    children: [
+      // Summary strip
+      jsxs('div', {
+        className: 'grid gap-3',
+        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' },
+        children: [
+          jsx(StatCard, { label: 'Sessions', value: String(sessions.length), sub: 'most recent', icon: 'history', accent: ACCENTS.rose, index: 0 }),
+          jsx(StatCard, { label: 'Messages', value: fmtNum(totalMsgs), sub: 'across these sessions', icon: 'comment', accent: ACCENTS.blue, index: 1 }),
+          jsx(StatCard, { label: 'Delegations', value: String(delegations.length), sub: 'background tasks', icon: 'organization', accent: ACCENTS.teal, index: 2 }),
+          jsx(StatCard, { label: 'Deliveries', value: String(deliveries.length), sub: 'queued messages', icon: 'send', accent: ACCENTS.gold, index: 3 })
+        ]
+      }),
+      // Recent sessions
+      jsx(Section, {
+        title: 'Recent sessions',
+        icon: 'history',
+        accent: ACCENTS.rose,
+        extra: `${sessions.length} shown`,
+        children: sessions.length
+          ? jsxs('div', {
+              className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+              children: sessions.map((s, i) => {
+                const tone = sourceTone[s.source] || ACCENTS.idle
+                return jsxs('div', {
+                  key: s.id,
+                  className: cn(
+                    'flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)',
+                    i > 0 && 'border-t border-(--ui-stroke-secondary)'
+                  ),
+                  children: [
+                    jsx('span', {
+                      className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
+                      style: { backgroundColor: tone.bg, color: tone.text },
+                      children: s.source || '?'
+                    }),
+                    jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: s.id, children: sessionShort(s.id) }),
+                    s.model ? jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model }) : null,
+                    jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: `${s.msg_count} msgs` }),
+                    jsx('span', { className: 'w-16 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
+                  ]
+                })
+              })
+            })
+          : jsx(EmptyState, { title: 'No sessions', description: 'No session activity recorded yet.' })
+      }),
+      // Delegations + deliveries side by side
+      jsxs('div', {
+        className: 'grid gap-4',
+        style: { gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' },
+        children: [
+          jsx(Section, {
+            title: 'Delegations',
+            icon: 'organization',
+            accent: ACCENTS.teal,
+            extra: `${delegations.length} shown`,
+            children: delegations.length
+              ? jsxs('div', {
+                  className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                  children: delegations.map((d, i) => (
+                    jsxs('div', {
+                      key: d.id,
+                      className: cn('flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                      children: [
+                        jsx('span', {
+                          className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
+                          style: d.state === 'completed'
+                            ? { backgroundColor: 'rgba(47,158,99,0.12)', color: '#2f9e63' }
+                            : { backgroundColor: 'rgba(183,121,31,0.12)', color: '#b7791f' },
+                          children: d.state || '?'
+                        }),
+                        jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: d.origin_session, children: sessionShort(d.origin_session) }),
+                        jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.dispatched_at ? fmtRelTime(new Date(d.dispatched_at * 1000)) : '—' })
+                      ]
+                    })
+                  ))
+                })
+              : jsx(EmptyState, { title: 'No delegations', description: 'No background tasks yet.' })
+          }),
+          jsx(Section, {
+            title: 'Deliveries',
+            icon: 'send',
+            accent: ACCENTS.gold,
+            extra: `${deliveries.length} shown`,
+            children: deliveries.length
+              ? jsxs('div', {
+                  className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                  children: deliveries.map((d, i) => (
+                    jsxs('div', {
+                      key: d.id,
+                      className: cn('flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                      children: [
+                        jsx('span', {
+                          className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
+                          style: { backgroundColor: 'rgba(47,127,212,0.12)', color: '#2f7fd4' },
+                          children: d.platform || '?'
+                        }),
+                        jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: d.session_key, children: sessionShort(d.session_key) }),
+                        jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.created_at ? fmtRelTime(new Date(d.created_at * 1000)) : '—' })
+                      ]
+                    })
+                  ))
+                })
+              : jsx(EmptyState, { title: 'No deliveries', description: 'No queued deliveries.' })
+          })
+        ]
+      })
+    ]
+  })
+}
+
 // ── main page ──────────────────────────────────────────────────────────────
 
 function CommandCenterPage() {
@@ -1437,12 +1661,14 @@ function CommandCenterPage() {
               })
             : tab === 'overview'
               ? jsx(OverviewTab, { data, onRefresh: refresh })
-              : tab === 'cron'
-                ? jsx(CronTab, { data })
-                : tab === 'plugins'
-                  ? jsx(PluginsTab, { data })
-                  : tab === 'models'
-                    ? jsx(ModelsTab, { data })
+              : tab === 'activity'
+                ? jsx(ActivityTab, { data })
+                : tab === 'cron'
+                  ? jsx(CronTab, { data })
+                  : tab === 'plugins'
+                    ? jsx(PluginsTab, { data })
+                    : tab === 'models'
+                      ? jsx(ModelsTab, { data })
                     : tab === 'skills'
                       ? jsx(SkillsTab, { data })
                       : jsx(MemoryTab, { data })
