@@ -2027,6 +2027,18 @@ function fmtUptime(sec) {
   return `${m}m`
 }
 
+// Storage location metadata: per-location icon + color identity.
+const STORAGE_META = {
+  'state.db': { icon: 'database', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
+  logs: { icon: 'list-unordered', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
+  sessions: { icon: 'history', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } },
+  data: { icon: 'database', accent: { from: '#2f9e63', to: '#3ecf8e', text: '#2f9e63', bg: 'rgba(47,158,99,0.12)' } },
+  skills: { icon: 'book', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
+  plugins: { icon: 'plug', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  memories: { icon: 'book', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
+  cron: { icon: 'clock', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } }
+}
+
 function SystemTab({ data }) {
   const storage = data.storage || []
   const totalBytes = data.total_bytes || storage.reduce((a, s) => a + (s.bytes || 0), 0)
@@ -2049,29 +2061,43 @@ function SystemTab({ data }) {
         title: 'Storage',
         icon: 'database',
         accent: ACCENTS.blue,
-        extra: `${storage.length} locations`,
+        extra: `${fmtBytes(totalBytes)} tracked`,
         children: storage.length
           ? jsxs('div', {
-              className: 'flex flex-col gap-2',
+              className: 'grid gap-2',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' },
               children: storage.map((s, i) => {
-                const c = modelColor(i)
+                const meta = STORAGE_META[s.name] || { icon: 'database', accent: modelColor(i % 6) }
+                const pct = maxBytes ? Math.round((s.bytes / maxBytes) * 100) : 0
                 return jsxs('div', {
                   key: s.name,
-                  className: 'flex flex-col gap-1',
+                  className: cn(
+                    'hc-glow hc-fade-up flex items-center gap-2.5 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg'
+                  ),
+                  style: { animationDelay: `${i * 30}ms` },
                   children: [
+                    jsx('div', {
+                      className: 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white',
+                      style: { background: `linear-gradient(135deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)`, boxShadow: '0 4px 10px rgba(0,0,0,0.18)' },
+                      children: jsx(Codicon, { name: meta.icon, className: 'text-sm' })
+                    }),
                     jsxs('div', {
-                      className: 'flex items-center gap-2 text-xs',
+                      className: 'min-w-0 flex-1',
                       children: [
-                        jsx('span', { className: 'w-28 shrink-0 truncate font-medium text-(--ui-text-primary)', children: s.name }),
-                        jsx('span', { className: 'ml-auto shrink-0 tabular-nums text-(--ui-text-secondary)', children: fmtBytes(s.bytes) })
+                        jsx('span', { className: 'block truncate font-mono text-xs font-semibold text-(--ui-text-primary)', children: s.name }),
+                        jsx('div', {
+                          className: 'mt-1 h-1.5 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
+                          children: jsx('div', {
+                            className: 'h-full rounded-full',
+                            style: { width: `${Math.max(2, pct)}%`, background: `linear-gradient(90deg, ${meta.accent.from} 0%, ${meta.accent.to} 100%)` }
+                          })
+                        })
                       ]
                     }),
-                    jsx('div', {
-                      className: 'h-1.5 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
-                      children: jsx('div', {
-                        className: 'h-full rounded-full',
-                        style: { width: `${Math.max(2, (s.bytes / maxBytes) * 100)}%`, background: c.bar }
-                      })
+                    jsx('span', {
+                      className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums',
+                      style: { backgroundColor: meta.accent.bg, color: meta.accent.text },
+                      children: fmtBytes(s.bytes)
                     })
                   ]
                 })

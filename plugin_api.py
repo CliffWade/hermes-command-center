@@ -840,8 +840,20 @@ async def system():
     # Python + repo commit.
     out["python"] = f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
     try:
-        repo = Path(os.environ.get("HERMES_AGENT_REPO", "")) or (home.parent / "hermes-agent")
-        if (repo / ".git").exists():
+        repo_env = os.environ.get("HERMES_AGENT_REPO", "").strip()
+        candidates = []
+        if repo_env:
+            candidates.append(Path(repo_env))
+        # The hermes-agent checkout lives next to (or under) the hermes home.
+        candidates.append(home / "hermes-agent")
+        candidates.append(home.parent / "hermes-agent")
+        candidates.append(Path.home() / "hermes-agent")
+        repo = None
+        for c in candidates:
+            if (c / ".git").exists():
+                repo = c
+                break
+        if repo is not None:
             import subprocess as sp
             out["commit"] = sp.run(
                 ["git", "-C", str(repo), "log", "--oneline", "-1"],
@@ -850,27 +862,35 @@ async def system():
     except Exception:
         pass
 
-    # Uptime of the current backend process.
+    # Uptime of the current backend process (elapsed-time form, cross-platform).
     try:
-        out["uptime_sec"] = int(time.time() - _process_start())
+        import subprocess as sp
+        out_p = sp.run(["ps", "-o", "etime=", "-p", str(os.getpid())],
+                       capture_output=True, text=True, timeout=5).stdout.strip()
+        out["uptime_sec"] = _parse_etime(out_p)
     except Exception:
         pass
 
     return out
 
 
-def _process_start() -> float:
+def _parse_etime(s: str) -> int:
+    """Parse ps elapsed time like '1-02:03:04' or '02:03:04' or '03:04'."""
     try:
-        with open("/proc/self/stat") as f:
-            parts = f.read().split()
-            return float(parts[21]) / 100.0
+        s = s.strip()
+        if not s:
+            return 0
+        days = 0
+        if "-" in s:
+            dpart, rest = s.split("-", 1)
+            days = int(dpart)
+        else:
+            rest = s
+        parts = rest.split(":")
+        if len(parts) == 3:
+            return days * 86400 + int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        if len(parts) == 2:
+            return days * 86400 + int(parts[0]) * 60 + int(parts[1])
+        return days * 86400 + int(parts[0])
     except Exception:
-        pass
-    # macOS fallback: ps start time.
-    try:
-        import subprocess as sp
-        out = sp.run(["ps", "-o", "lstart=", "-p", str(os.getpid())],
-                     capture_output=True, text=True, timeout=5).stdout.strip()
-        return time.mktime(time.strptime(out, "%a %b %d %H:%M:%S %Y"))
-    except Exception:
-        return time.time()
+        return 0
