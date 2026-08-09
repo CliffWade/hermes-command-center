@@ -1674,6 +1674,7 @@ const PROVIDER_META = {
   'opencode-go': { label: 'OpenCode GO', icon: 'code', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
   'openai-codex': { label: 'OpenAI Codex', icon: 'sparkle', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
   openrouter: { label: 'OpenRouter', icon: 'globe', accent: { from: '#b7791f', to: '#e0a63d', text: '#b7791f', bg: 'rgba(183,121,31,0.12)' } },
+  fal: { label: 'FAL.ai', icon: 'device-camera', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
   anthropic: { label: 'Anthropic', icon: 'comment', accent: { from: '#d4578f', to: '#f07ab0', text: '#d4578f', bg: 'rgba(212,87,143,0.12)' } },
   openai: { label: 'OpenAI', icon: 'sparkle', accent: { from: '#7b5fd9', to: '#a48cf0', text: '#7b5fd9', bg: 'rgba(123,95,217,0.12)' } },
   gemini: { label: 'Google Gemini', icon: 'sparkle', accent: { from: '#2f7fd4', to: '#5aa7f0', text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' } },
@@ -1816,11 +1817,14 @@ function UsageTab({ data }) {
                     jsxs('div', {
                       className: 'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] text-(--ui-text-tertiary)',
                       children: [
-                        jsx('span', { children: `${fmtNum(p.input)} in` }),
-                        jsx('span', { children: `${fmtNum(p.output)} out` }),
+                        p.images
+                          ? jsx('span', { children: `${p.images} images` })
+                          : jsx('span', { children: `${fmtNum(p.input)} in` }),
+                        p.videos ? jsx('span', { children: `${p.videos} videos` }) : null,
+                        !p.images && p.output ? jsx('span', { children: `${fmtNum(p.output)} out` }) : null,
                         p.cache_read ? jsx('span', { children: `${fmtNum(p.cache_read)} cache` }) : null,
                         p.reasoning ? jsx('span', { children: `${fmtNum(p.reasoning)} think` }) : null,
-                        jsx('span', { className: 'ml-auto text-(--ui-text-quaternary)', children: `${p.api_calls} calls · ${p.models} models` })
+                        jsx('span', { className: 'ml-auto text-(--ui-text-quaternary)', children: p.images ? `${p.api_calls} generations` : `${p.api_calls} calls · ${p.models} models` })
                       ]
                     })
                   ]

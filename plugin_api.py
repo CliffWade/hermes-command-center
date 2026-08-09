@@ -649,6 +649,45 @@ async def usage():
             "sessions": _int(r[9]),
         })
 
+    # 1b) Image generation usage from the image-studio history DB (FAL.ai).
+    #      FAL has no public balance API for regular keys, but the plugin
+    #      records real generations with model + cost — surface that.
+    try:
+        import sqlite3 as _sq
+        hist_db = _hermes_home() / "data" / "image-studio" / "history.db"
+        if hist_db.exists():
+            con = _sq.connect(hist_db)
+            try:
+                g = con.execute(
+                    "SELECT COUNT(*), COALESCE(SUM(cost_usd),0), "
+                    "COALESCE(SUM(CASE WHEN cost_usd > 0 THEN 1 ELSE 0 END),0), "
+                    "COUNT(DISTINCT model) FROM generations"
+                ).fetchone()
+                v = con.execute(
+                    "SELECT COUNT(*), COALESCE(SUM(cost_usd),0) FROM videos"
+                ).fetchone()
+            finally:
+                con.close()
+            if g and _int(g[0]) > 0:
+                gen_cost = _f(g[1])
+                vid_cost = _f(v[1]) if v else 0.0
+                out["providers"].append({
+                    "provider": "fal",
+                    "mode": "image generation",
+                    "input": 0,
+                    "output": 0,
+                    "cache_read": 0,
+                    "reasoning": 0,
+                    "api_calls": _int(g[0]) + (_int(v[0]) if v else 0),
+                    "cost": _f(gen_cost + vid_cost),
+                    "models": _int(g[2]),
+                    "sessions": 0,
+                    "images": _int(g[0]),
+                    "videos": _int(v[0]) if v else 0,
+                })
+    except Exception:
+        pass
+
     # 2) Live balances where an API key is configured. Only OpenRouter has a
     #    public balance endpoint today; add others (xAI, etc.) as they appear.
     or_key = _load_env_secret("OPENROUTER_API_KEY")
