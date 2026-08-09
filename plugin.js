@@ -170,7 +170,7 @@ function RingGauge({ value, max, label, sub, from, to, size }) {
         className: 'absolute inset-0 flex flex-col items-center justify-center',
         children: [
           jsx('span', { className: 'text-sm font-bold tabular-nums text-(--ui-text-primary)', children: `${pct}%` }),
-          label ? jsx('span', { className: 'text-[0.5rem] uppercase tracking-wide text-(--ui-text-quaternary)', children: label }) : null
+          label ? jsx('span', { className: 'text-[0.625rem] font-medium uppercase tracking-wide text-(--ui-text-tertiary)', children: label }) : null
         ]
       })
     ]
@@ -295,7 +295,7 @@ function HealthBreakdown({ health, factors }) {
     children: [
       jsx('button', {
         type: 'button',
-        className: 'flex items-center gap-1.5 rounded-lg px-2 py-1 text-[0.625rem] font-medium text-(--ui-text-quaternary) transition-colors hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-secondary)',
+        className: 'flex items-center gap-1.5 rounded-lg px-2 py-1 text-[0.625rem] font-medium text-(--ui-text-tertiary) transition-colors hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-secondary)',
         children: [
           jsx(Codicon, { name: 'info', className: 'text-xs' }),
           'What is this?'
@@ -339,7 +339,7 @@ function HealthBreakdown({ health, factors }) {
                               jsx('span', { className: 'text-[0.6875rem] font-medium text-(--ui-text-primary)', children: f.label }),
                               f.penalty > 0
                                 ? jsx('span', { className: 'text-[0.625rem] font-semibold tabular-nums text-(--ui-error)', children: `−${f.penalty}` })
-                                : jsx('span', { className: 'text-[0.625rem] text-(--ui-text-quaternary)', children: 'ok' })
+                                : jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: 'ok' })
                             ]
                           }),
                           jsx('span', { className: 'text-[0.625rem] leading-snug text-(--ui-text-tertiary)', children: f.desc })
@@ -351,7 +351,7 @@ function HealthBreakdown({ health, factors }) {
               }),
               totalPenalty > 0
                 ? jsx('div', {
-                    className: 'mt-3 border-t border-(--ui-stroke-secondary) pt-2 text-[0.625rem] text-(--ui-text-quaternary)',
+                    className: 'mt-3 border-t border-(--ui-stroke-secondary) pt-2 text-[0.625rem] text-(--ui-text-tertiary)',
                     children: `Total deductions: −${totalPenalty}`
                   })
                 : null
@@ -447,7 +447,7 @@ function StatCard({ label, value, sub, icon, accent, pulse, index }) {
       jsxs('div', {
         className: 'flex items-start justify-between gap-2',
         children: [
-          jsx('span', { className: 'text-[0.625rem] font-medium uppercase tracking-wider text-(--ui-text-quaternary)', children: label }),
+          jsx('span', { className: 'text-[0.625rem] font-medium uppercase tracking-wider text-(--ui-text-tertiary)', children: label }),
           icon && accent ? jsx(IconChip, { codicon: icon, accent, size: 'h-7 w-7' }) : null
         ]
       }),
@@ -473,7 +473,7 @@ function Section({ title, icon, accent, children, extra }) {
         children: [
           icon && accent ? jsx(IconChip, { codicon: icon, accent, size: 'h-6 w-6' }) : null,
           jsx('span', { className: 'text-xs font-semibold text-(--ui-text-primary)', children: title }),
-          extra ? jsx('span', { className: 'ml-auto text-[0.625rem] font-medium text-(--ui-text-quaternary)', children: extra }) : null
+          extra ? jsx('span', { className: 'ml-auto text-[0.625rem] font-medium text-(--ui-text-tertiary)', children: extra }) : null
         ]
       }),
       jsx('div', { className: 'p-4', children })
@@ -495,11 +495,11 @@ function GatewayStrip({ gateway }) {
     className: 'flex items-center gap-3 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-4 py-2.5',
     children: [
       jsx(StatusPill, { tone, children: `gateway ${phase}` }),
-      gateway.pid ? jsx('span', { className: 'font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: `pid ${gateway.pid}` }) : null,
+      gateway.pid ? jsx('span', { className: 'font-mono text-[0.625rem] text-(--ui-text-tertiary)', children: `pid ${gateway.pid}` }) : null,
       heartbeat != null
         ? jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: heartbeat < 120 ? 'heartbeat: fresh' : `heartbeat: ${Math.round(heartbeat / 60)}m ago` })
         : jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: 'no heartbeat file' }),
-      jsx('span', { className: 'ml-auto text-[0.625rem] text-(--ui-text-quaternary)', children: gateway.exited_at ? `last exit ${fmtRelTime(new Date(gateway.exited_at))}` : '' })
+      jsx('span', { className: 'ml-auto text-[0.625rem] text-(--ui-text-tertiary)', children: gateway.exited_at ? `last exit ${fmtRelTime(new Date(gateway.exited_at))}` : '' })
     ]
   })
 }
@@ -573,7 +573,7 @@ function ErrorLogViewer({ lines }) {
                   className: 'flex items-center justify-between gap-2',
                   children: [
                     l.time
-                      ? jsx('span', { className: 'font-mono text-[0.5625rem] tabular-nums text-(--ui-text-quaternary)', title: l.ts, children: l.time })
+                      ? jsx('span', { className: 'font-mono text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', title: l.ts, children: l.time })
                       : null,
                     jsx('button', {
                       type: 'button',
@@ -581,7 +581,7 @@ function ErrorLogViewer({ lines }) {
                         'flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[0.5625rem] transition-all',
                         copied === i
                           ? 'text-(--ui-ok)'
-                          : 'text-(--ui-text-quaternary) hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-primary)'
+                          : 'text-(--ui-text-tertiary) hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-primary)'
                       ),
                       style: copied === i ? { backgroundColor: 'rgba(47,158,99,0.12)' } : undefined,
                       onClick: () => copyLine(i, full),
@@ -930,7 +930,7 @@ function CronTab({ data }) {
                   className: 'mb-0',
                   children: [
                     jsxs('div', {
-                      className: 'flex items-center gap-2 px-1 pb-1.5 pt-2 text-[0.625rem] font-semibold uppercase tracking-wider text-(--ui-text-quaternary)',
+                      className: 'flex items-center gap-2 px-1 pb-1.5 pt-2 text-[0.625rem] font-semibold uppercase tracking-wider text-(--ui-text-tertiary)',
                       children: [
                         jsx('span', { children: group.label }),
                         jsx('span', { className: 'rounded-full bg-(--ui-bg-quaternary) px-1.5 text-[0.5625rem] tabular-nums', children: String(group.items.length) })
@@ -954,11 +954,11 @@ function CronTab({ data }) {
                               children: ex.status || 'unknown'
                             }),
                             jsx('span', { className: 'min-w-0 flex-1 truncate font-medium text-(--ui-text-primary)', children: ex.job_name }),
-                            jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: ex.duration_ms != null ? fmtDuration(ex.duration_ms) : '' }),
+                            jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', children: ex.duration_ms != null ? fmtDuration(ex.duration_ms) : '' }),
                             ex.error
                               ? jsx('span', { className: 'max-w-[12rem] truncate text-[0.625rem] text-(--ui-error)', title: ex.error, children: ex.error })
                               : null,
-                            jsx('span', { className: 'w-16 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: d ? d.toLocaleString() : '', children: fmtRelTime(d) })
+                            jsx('span', { className: 'w-16 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', title: d ? d.toLocaleString() : '', children: fmtRelTime(d) })
                           ]
                         })
                       })
@@ -1048,7 +1048,7 @@ function PluginsTab({ data }) {
                               className: 'flex items-center gap-1.5',
                               children: [
                                 jsx('span', { className: 'truncate text-xs font-semibold text-(--ui-text-primary)', children: p.name }),
-                                jsx('span', { className: 'shrink-0 font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: 'v' + (p.version || '?') })
+                                jsx('span', { className: 'shrink-0 font-mono text-[0.625rem] text-(--ui-text-tertiary)', children: 'v' + (p.version || '?') })
                               ]
                             }),
                             jsx('span', {
@@ -1078,11 +1078,11 @@ function PluginsTab({ data }) {
                                   style: { backgroundColor: 'rgba(138,143,152,0.12)', color: '#8a8f98' },
                                   children: 'no api'
                                 }),
-                            jsx('span', { className: 'text-(--ui-text-quaternary)', children: fmtMtime(p.mtime) })
+                            jsx('span', { className: 'text-(--ui-text-tertiary)', children: fmtMtime(p.mtime) })
                           ]
                         }),
                         jsx('span', {
-                          className: 'shrink-0 font-mono text-[0.625rem] text-(--ui-text-quaternary)',
+                          className: 'shrink-0 font-mono text-[0.625rem] text-(--ui-text-tertiary)',
                           children: p.mounted_from === 'repo' ? 'repo' : 'user'
                         })
                       ]
@@ -1115,7 +1115,7 @@ function PluginsTab({ data }) {
                     jsx(IconChip, { codicon: meta.icon, accent: meta.accent, size: 'h-7 w-7' }),
                     jsx('span', { className: 'min-w-0 flex-1 truncate text-xs font-medium text-(--ui-text-primary)', title: p.name, children: p.name }),
                     jsx('span', { className: 'shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[0.625rem] tabular-nums', style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' }, children: `${(p.size / 1024).toFixed(1)} KB` }),
-                    jsx('span', { className: 'shrink-0 text-[0.625rem] text-(--ui-text-quaternary)', children: fmtMtime(p.mtime) })
+                    jsx('span', { className: 'shrink-0 text-[0.625rem] text-(--ui-text-tertiary)', children: fmtMtime(p.mtime) })
                   ]
                 })
               })
@@ -1236,7 +1236,7 @@ function ModelsTab({ data }) {
                           })
                         }),
                         jsxs('div', {
-                          className: 'flex items-center justify-between text-[0.625rem] text-(--ui-text-quaternary)',
+                          className: 'flex items-center justify-between text-[0.625rem] text-(--ui-text-tertiary)',
                           children: [
                             jsx('span', { children: `${fmtNum(total)} total` }),
                             jsx('span', { children: `${cachePct}% cache` })
@@ -1313,9 +1313,9 @@ function ModelsTab({ data }) {
                       key: s.session_id,
                       className: cn('flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
                       children: [
-                        jsx('span', { className: 'w-4 shrink-0 text-right font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: String(i + 1) }),
+                        jsx('span', { className: 'w-4 shrink-0 text-right font-mono text-[0.625rem] text-(--ui-text-tertiary)', children: String(i + 1) }),
                         jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: s.session_id, children: s.label || sessionShort(s.session_id) }),
-                        jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model }),
+                        jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-tertiary)', children: s.model }),
                         jsx('span', { className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums', style: { backgroundColor: 'rgba(183,121,31,0.10)', color: '#b7791f' }, children: fmtNum(s.tokens) })
                       ]
                     })
@@ -1417,7 +1417,7 @@ function SkillsTab({ data }) {
                           })
                         }),
                         jsxs('div', {
-                          className: 'flex items-center justify-between text-[0.625rem] text-(--ui-text-quaternary)',
+                          className: 'flex items-center justify-between text-[0.625rem] text-(--ui-text-tertiary)',
                           children: [
                             jsx('span', { children: `${pct}% of top usage` }),
                             s.state && s.state !== 'active'
@@ -1572,7 +1572,7 @@ function MemoryFileCard({ name, kind, chars, limit, pct, from, to, bar, index })
             })
           }),
           jsx('span', {
-            className: 'text-[0.625rem] tabular-nums text-(--ui-text-quaternary)',
+            className: 'text-[0.625rem] tabular-nums text-(--ui-text-tertiary)',
             children: `${fmtNum(chars)} / ${fmtNum(limit)} chars`
           })
         ]
@@ -1859,7 +1859,7 @@ function ActivityTab({ data }) {
                                     children: r.source || '?'
                                   }),
                                   jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: r.session_id, children: sessionShort(r.session_id) }),
-                                  jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: r.timestamp ? fmtRelTime(new Date(r.timestamp * 1000)) : '—' })
+                                  jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', children: r.timestamp ? fmtRelTime(new Date(r.timestamp * 1000)) : '—' })
                                 ]
                               }),
                               r.snippet
@@ -1916,7 +1916,7 @@ function ActivityTab({ data }) {
                         }),
                         jsx('span', { className: 'text-xs font-semibold capitalize text-(--ui-text-primary)', children: cat }),
                         jsx('span', { className: 'rounded-full px-1.5 py-0.5 text-[0.5625rem] font-semibold tabular-nums', style: { backgroundColor: meta.accent.bg, color: meta.accent.text }, children: String(group.length) }),
-                        jsx('span', { className: 'ml-auto max-w-[9rem] truncate text-[0.5625rem] text-(--ui-text-quaternary)', title: meta.desc, children: meta.desc })
+                        jsx('span', { className: 'ml-auto max-w-[9rem] truncate text-[0.5625rem] text-(--ui-text-tertiary)', title: meta.desc, children: meta.desc })
                       ]
                     }),
                     // Session cards in this category
@@ -1937,14 +1937,14 @@ function ActivityTab({ data }) {
                               children: s.label || sessionShort(s.id)
                             }),
                             s.showModel
-                              ? jsx('span', { className: 'max-w-[5rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model })
+                              ? jsx('span', { className: 'max-w-[5rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-tertiary)', children: s.model })
                               : null,
                             jsx('span', {
                               className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums',
                               style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' },
                               children: `${fmtNum(s.msg_count)} messages`
                             }),
-                            jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
+                            jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
                           ]
                         })
                       })
@@ -1984,7 +1984,7 @@ function ActivityTab({ data }) {
                               children: d.state || '?'
                             }),
                             jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.origin_session, children: d.label || sessionShort(d.origin_session) }),
-                            jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.dispatched_at ? fmtRelTime(new Date(d.dispatched_at * 1000)) : '—' })
+                            jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', children: d.dispatched_at ? fmtRelTime(new Date(d.dispatched_at * 1000)) : '—' })
                           ]
                         })
                       ))
@@ -2006,7 +2006,7 @@ function ActivityTab({ data }) {
                               children: d.platform || '?'
                             }),
                             jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.session_key, children: sessionShort(d.session_key) }),
-                            jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.created_at ? fmtRelTime(new Date(d.created_at * 1000)) : '—' })
+                            jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-tertiary)', children: d.created_at ? fmtRelTime(new Date(d.created_at * 1000)) : '—' })
                           ]
                         })
                       ))
@@ -2138,7 +2138,7 @@ function UsageTab({ data }) {
                       children: [
                         jsx('span', { className: 'block text-sm font-bold text-(--ui-text-primary)', children: c.label }),
                         jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-tertiary)', children: remaining != null ? `$${remaining.toFixed(2)} remaining of $${total.toFixed(2)}` : `$${c.total_usage.toFixed(2)} used` }),
-                        jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-quaternary)', children: c.is_free_tier ? 'free tier' : c.limit != null ? `limit $${c.limit.toFixed(2)}` : 'prepaid credits' })
+                        jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-tertiary)', children: c.is_free_tier ? 'free tier' : c.limit != null ? `limit $${c.limit.toFixed(2)}` : 'prepaid credits' })
                       ]
                     })
                   ]
@@ -2210,7 +2210,7 @@ function UsageTab({ data }) {
                         !p.images && p.output ? jsx('span', { children: `${fmtNum(p.output)} out` }) : null,
                         p.cache_read ? jsx('span', { children: `${fmtNum(p.cache_read)} cache` }) : null,
                         p.reasoning ? jsx('span', { children: `${fmtNum(p.reasoning)} think` }) : null,
-                        jsx('span', { className: 'ml-auto text-(--ui-text-quaternary)', children: p.images ? `${p.api_calls} generations` : `${p.api_calls} calls · ${p.models} models` })
+                        jsx('span', { className: 'ml-auto text-(--ui-text-tertiary)', children: p.images ? `${p.api_calls} generations` : `${p.api_calls} calls · ${p.models} models` })
                       ]
                     })
                   ]
@@ -2376,7 +2376,7 @@ function UpdateBanner({ update }) {
         children: [
           jsx('span', { className: 'block text-xs font-bold text-(--ui-text-primary)', children: `Update available: ${update.tag}` }),
           jsx('span', { className: 'block text-[0.625rem] text-(--ui-text-tertiary)', children: update.published_at ? `Published ${relativeTime(new Date(update.published_at))}` : 'Newer release on GitHub' }),
-          update.notes ? jsx('span', { className: 'mt-1 block truncate text-[0.625rem] text-(--ui-text-quaternary)', title: update.notes, children: update.notes }) : null
+          update.notes ? jsx('span', { className: 'mt-1 block truncate text-[0.625rem] text-(--ui-text-tertiary)', title: update.notes, children: update.notes }) : null
         ]
       }),
       update.url
@@ -2398,7 +2398,7 @@ function ConfigChip({ k, v, accent }) {
   return jsxs('div', {
     className: 'flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2',
     children: [
-      jsx('span', { className: 'w-24 shrink-0 text-[0.5625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: k }),
+      jsx('span', { className: 'w-24 shrink-0 text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-tertiary)', children: k }),
       jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium', style: { color: accent.text }, title: v, children: v })
     ]
   })
@@ -2525,7 +2525,7 @@ function EnvCard({ icon, label, accent, rows }) {
       jsxs('div', {
         className: 'min-w-0 flex-1',
         children: [
-          jsx('span', { className: 'block text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: label }),
+          jsx('span', { className: 'block text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-tertiary)', children: label }),
           jsxs('div', {
             className: 'mt-0.5 flex flex-col gap-0.5',
             children: rows.map(r => (
@@ -2533,7 +2533,7 @@ function EnvCard({ icon, label, accent, rows }) {
                 key: r[0],
                 className: 'flex items-baseline gap-1.5 text-[0.6875rem]',
                 children: [
-                  jsx('span', { className: 'shrink-0 text-[0.5625rem] uppercase text-(--ui-text-quaternary)', children: r[0] }),
+                  jsx('span', { className: 'shrink-0 text-[0.625rem] uppercase text-(--ui-text-tertiary)', children: r[0] }),
                   jsx('span', {
                     className: 'min-w-0 flex-1 truncate font-medium',
                     style: { color: accent.text },
