@@ -1666,18 +1666,20 @@ function CommandCenterPage() {
       }),
       jsx('div', {
         className: 'min-h-0 flex-1 overflow-y-auto',
-        children: isLoading
-          ? jsxs('div', { className: 'flex flex-col gap-3 p-6', children: [jsx(Skeleton, { className: 'h-28 w-full rounded-xl' }), jsx(Skeleton, { className: 'h-28 w-full rounded-xl' }), jsx(Skeleton, { className: 'h-28 w-full rounded-xl' })] })
-          : isError
-            ? jsx(ErrorState, {
-                title: 'Could not load command center',
-                description: `${(error && error.message) || error} — is the command-center plugin enabled?`,
-                children: jsx(Button, { variant: 'secondary', onClick: () => refetch(), children: 'Retry' })
-              })
-            : tab === 'overview'
-              ? jsx(OverviewTab, { data, onRefresh: refresh })
-              : tab === 'activity'
-                ? jsx(ActivityTab, { data })
+        children: jsx('div', {
+          className: 'mx-auto w-full max-w-[1200px]',
+          children: isLoading
+            ? jsxs('div', { className: 'flex flex-col gap-3 p-6', children: [jsx(Skeleton, { className: 'h-28 w-full rounded-xl' }), jsx(Skeleton, { className: 'h-28 w-full rounded-xl' }), jsx(Skeleton, { className: 'h-28 w-full rounded-xl' })] })
+            : isError
+              ? jsx(ErrorState, {
+                  title: 'Could not load command center',
+                  description: `${(error && error.message) || error} — is the command-center plugin enabled?`,
+                  children: jsx(Button, { variant: 'secondary', onClick: () => refetch(), children: 'Retry' })
+                })
+              : tab === 'overview'
+                ? jsx(OverviewTab, { data, onRefresh: refresh })
+                : tab === 'activity'
+                  ? jsx(ActivityTab, { data })
                 : tab === 'cron'
                   ? jsx(CronTab, { data })
                   : tab === 'plugins'
@@ -1687,6 +1689,7 @@ function CommandCenterPage() {
                     : tab === 'skills'
                       ? jsx(SkillsTab, { data })
                       : jsx(MemoryTab, { data })
+        })
       })
     ]
   })
