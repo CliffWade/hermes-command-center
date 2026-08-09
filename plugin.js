@@ -578,15 +578,17 @@ function ErrorLogViewer({ lines }) {
                     jsx('button', {
                       type: 'button',
                       className: cn(
-                        'shrink-0 rounded px-1.5 py-0.5 text-[0.5625rem] transition-all',
+                        'flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[0.5625rem] transition-all',
                         copied === i
                           ? 'text-(--ui-ok)'
-                          : 'text-(--ui-text-quaternary) opacity-0 hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-primary) group-hover:opacity-100'
+                          : 'text-(--ui-text-quaternary) hover:bg-(--ui-bg-quaternary) hover:text-(--ui-text-primary)'
                       ),
                       style: copied === i ? { backgroundColor: 'rgba(47,158,99,0.12)' } : undefined,
                       onClick: () => copyLine(i, full),
                       title: 'Copy error',
-                      children: copied === i ? 'copied' : 'copy'
+                      children: copied === i
+                        ? 'copied'
+                        : jsx(Codicon, { name: 'copy', className: 'text-[0.6875rem]' })
                     })
                   ]
                 }),
