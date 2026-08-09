@@ -1581,6 +1581,96 @@ function MemoryFileCard({ name, kind, chars, limit, pct, from, to, bar, index })
   })
 }
 
+// ── activity heatmap ───────────────────────────────────────────────────────
+
+// 24-hour message volume grid with gradient intensity + a 7-day strip.
+function ActivityHeatmap({ heatmap }) {
+  if (!heatmap) return null
+  const hours = heatmap.hours || []
+  const days = heatmap.days || []
+  const maxHour = Math.max(...hours, 1)
+  const maxDay = Math.max(...days.map(d => d.count), 1)
+  const total7d = days.reduce((a, d) => a + d.count, 0)
+
+  // Gradient from soft blue to deep purple as activity climbs.
+  const heatColor = pct => {
+    const t = Math.min(1, pct)
+    if (t <= 0.05) return 'rgba(47,127,212,0.08)'
+    if (t < 0.35) return `rgba(47,127,212,${0.14 + t * 0.5})`
+    if (t < 0.7) return `rgba(123,95,217,${0.3 + (t - 0.35) * 0.8})`
+    return `rgba(212,87,143,${0.45 + (t - 0.7) * 0.55})`
+  }
+
+  return jsx(Section, {
+    title: 'Activity heatmap',
+    icon: 'pulse',
+    accent: ACCENTS.blue,
+    extra: `${fmtNum(total7d)} messages · 7d`,
+    children: jsxs('div', {
+      className: 'flex flex-col gap-3',
+      children: [
+        // Hour grid: 24 cells, 4 rows x 6 cols for readability
+        jsxs('div', {
+          className: 'grid gap-1.5',
+          style: { gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' },
+          children: hours.map((n, h) => {
+            const pct = n / maxHour
+            const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`
+            return jsxs('div', {
+              key: h,
+              className: 'group relative flex h-7 items-center justify-center rounded-md text-[0.5625rem] transition-transform hover:scale-105',
+              style: { backgroundColor: heatColor(pct) },
+              children: [
+                jsx('span', {
+                  className: n > 0 ? 'font-semibold text-(--ui-text-primary)' : 'text-(--ui-text-quaternary)',
+                  children: n > 0 ? (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)) : '·'
+                }),
+                n > 0
+                  ? jsx('span', {
+                      className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
+                      children: `${label}: ${fmtNum(n)} msgs`
+                    })
+                  : null
+              ]
+            })
+          })
+        }),
+        // Hour labels row
+        jsx('div', {
+          className: 'flex justify-between px-0.5 text-[0.5rem] text-(--ui-text-quaternary)',
+          children: ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'].map(l =>
+            jsx('span', { key: l, children: l })
+          )
+        }),
+        // 7-day strip
+        days.length
+          ? jsxs('div', {
+              className: 'grid gap-1.5',
+              style: { gridTemplateColumns: `repeat(${Math.max(days.length, 1)}, minmax(0, 1fr))` },
+              children: days.map((d, i) => {
+                const pct = d.count / maxDay
+                const short = (d.date || '').slice(5)
+                return jsxs('div', {
+                  key: d.date,
+                  className: 'group relative flex flex-col items-center gap-1 rounded-md p-1.5 transition-transform hover:scale-105',
+                  style: { backgroundColor: heatColor(pct) },
+                  children: [
+                    jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
+                    jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: short }),
+                    jsx('span', {
+                      className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
+                      children: `${d.date}: ${fmtNum(d.count)} msgs`
+                    })
+                  ]
+                })
+              })
+            })
+          : null
+      ]
+    })
+  })
+}
+
 // ── Activity tab ───────────────────────────────────────────────────────────
 
 // Session source categories: what each means, its icon, and accent colors.
@@ -1711,6 +1801,8 @@ function ActivityTab({ data }) {
           ]
         })
       }),
+      // Activity heatmap — message volume by hour of day + last 7 days
+      jsx(ActivityHeatmap, { heatmap: data.heatmap }),
       // Summary strip
       jsxs('div', {
         className: 'grid gap-3',

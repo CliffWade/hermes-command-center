@@ -608,6 +608,38 @@ async def activity():
     except Exception:
         pass
 
+    # Activity heatmap: message volume by hour of day (local time).
+    out["heatmap"] = {"hours": [0] * 24}
+    try:
+        import sqlite3
+        con = sqlite3.connect(db)
+        rows = con.execute(
+            "SELECT CAST(strftime('%H', datetime(timestamp, 'unixepoch', 'localtime')) AS INTEGER) h, COUNT(*) "
+            "FROM messages GROUP BY h"
+        ).fetchall()
+        con.close()
+        for h, n in rows:
+            if 0 <= h <= 23:
+                out["heatmap"]["hours"][h] = n
+    except Exception:
+        pass
+
+    # Daily activity for the last 7 days (local date).
+    out["heatmap"]["days"] = []
+    try:
+        import sqlite3
+        con = sqlite3.connect(db)
+        rows = con.execute(
+            "SELECT date(timestamp, 'unixepoch', 'localtime') d, COUNT(*) "
+            "FROM messages WHERE timestamp >= ? "
+            "GROUP BY d ORDER BY d",
+            (int(time.time()) - 7 * 86400,),
+        ).fetchall()
+        con.close()
+        out["heatmap"]["days"] = [{"date": d, "count": n} for d, n in rows]
+    except Exception:
+        pass
+
     return out
 
 
