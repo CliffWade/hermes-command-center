@@ -506,31 +506,64 @@ function GatewayStrip({ gateway }) {
 
 // ── error log viewer ───────────────────────────────────────────────────────
 
-// Collapsible list of recent error/warning lines from errors.log.
+// Parse a log line into {ts, time, level, msg}. Log lines look like
+// "2026-08-09 18:46:23,651 WARNING tools.registry: ...".
+function parseLogLine(ln) {
+  const m = ln.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})[,\s](\d+)?\s+([A-Z]+)\s+(.*)$/)
+  if (m) {
+    return { ts: m[1], time: m[1].slice(11), level: m[2] ? m[3] : m[3], msg: (m[2] ? m[4] : m[3] + ' ' + m[4]) }
+  }
+  // Fallback: no timestamp prefix.
+  return { ts: '', time: '', level: '', msg: ln }
+}
+
+const LOG_LEVEL_STYLE = {
+  ERROR: { text: '#d64545', bg: 'rgba(214,69,69,0.12)' },
+  WARNING: { text: '#b7791f', bg: 'rgba(183,121,31,0.12)' },
+  INFO: { text: '#2f7fd4', bg: 'rgba(47,127,212,0.12)' },
+  DEBUG: { text: '#8a8f98', bg: 'rgba(138,143,152,0.12)' }
+}
+
+// Compact log viewer: level pill + time + truncated message per row.
 function ErrorLogViewer({ lines }) {
+  const parsed = lines.map(parseLogLine)
+  const errorCount = parsed.filter(l => l.level === 'ERROR').length
+  const warnCount = parsed.filter(l => l.level === 'WARNING').length
+
   return jsx(Section, {
     title: 'Recent errors',
     icon: 'error',
     accent: ACCENTS.red,
-    extra: `${lines.length} shown`,
+    extra: errorCount ? `${errorCount} errors · ${warnCount} warnings` : `${warnCount} warnings`,
     children: jsxs('div', {
       className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome)',
-      children: lines.map((ln, i) => (
-        jsxs('div', {
+      children: parsed.map((l, i) => {
+        const style = LOG_LEVEL_STYLE[l.level] || LOG_LEVEL_STYLE.INFO
+        return jsxs('div', {
           key: i,
           className: cn(
-            'flex items-start gap-2 px-3 py-1.5 text-[0.625rem] leading-snug',
+            'flex items-center gap-2 px-3 py-1.5 text-[0.625rem] leading-snug transition-colors hover:bg-(--ui-bg-quaternary)',
             i > 0 && 'border-t border-(--ui-stroke-secondary)'
           ),
           children: [
+            l.level
+              ? jsx('span', {
+                  className: 'w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[0.5625rem] font-bold',
+                  style: { backgroundColor: style.bg, color: style.text },
+                  children: l.level
+                })
+              : null,
+            l.time
+              ? jsx('span', { className: 'shrink-0 font-mono tabular-nums text-(--ui-text-quaternary)', title: l.ts, children: l.time })
+              : null,
             jsx('span', {
-              className: 'shrink-0 font-mono tabular-nums text-(--ui-text-quaternary)',
-              children: ln.length >= 19 ? ln.slice(0, 19) : '—'
-            }),
-            jsx('span', { className: 'min-w-0 flex-1 break-words font-mono text-(--ui-error)', title: ln, children: ln.length > 19 ? ln.slice(19) : ln })
+              className: 'min-w-0 flex-1 truncate font-mono text-(--ui-text-secondary)',
+              title: `${l.ts} ${l.level} ${l.msg}`,
+              children: l.msg
+            })
           ]
         })
-      ))
+      })
     })
   })
 }
