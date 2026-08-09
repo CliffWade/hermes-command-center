@@ -1704,7 +1704,7 @@ function ActivityHeatmap({ heatmap }) {
                           className: 'flex items-baseline gap-0.5',
                           children: [
                             jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
-                            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'messages' })
+                            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'msgs' })
                           ]
                         }),
                         jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: short }),
