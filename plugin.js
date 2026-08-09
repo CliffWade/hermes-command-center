@@ -400,7 +400,7 @@ function HeroHeader({ processes, onRefresh, health, healthColor, factors }) {
           jsxs('div', {
             className: 'min-w-0 flex-1',
             children: [
-              jsx('div', { className: 'text-lg font-bold tracking-tight text-(--ui-text-primary)', children: 'Hermes Center' }),
+              jsx('div', { className: 'text-lg font-bold tracking-tight text-(--ui-text-primary)', children: 'Hermes Command Center' }),
               jsx('div', { className: 'truncate text-xs text-(--ui-text-tertiary)', children: 'Your Hermes instance at a glance, refreshed every 30 seconds.' })
             ]
           }),
@@ -2480,7 +2480,7 @@ let rest
 
 export default {
   id: ID,
-  name: 'Hermes Center',
+  name: 'Hermes Command Center',
   description:
     'Read-only Hermes health and activity dashboard: processes, tokens, cron, plugins, models, skills, and memory in one place.',
   defaultEnabled: true,
@@ -2491,22 +2491,22 @@ export default {
         id: 'page',
         area: ROUTES_AREA,
         data: { path: '/hermes-center' },
-        title: 'Hermes Center',
+        title: 'Hermes Command Center',
         render: () => jsx(CommandCenterPage, {})
       },
       {
         id: 'nav',
         area: SIDEBAR_NAV_AREA,
         order: 50,
-        data: { path: '/hermes-center', label: 'Hermes Center', codicon: 'dashboard' }
+        data: { path: '/hermes-center', label: 'Hermes Command Center', codicon: 'dashboard' }
       },
       {
         id: 'open',
         area: PALETTE_AREA,
         data: {
           id: 'hermes-center.open',
-          label: 'Hermes Center: Open',
-          keywords: ['hermes center', 'dashboard', 'health', 'cron', 'tokens', 'status'],
+          label: 'Hermes Command Center: Open',
+          keywords: ['hermes command center', 'hermes center', 'dashboard', 'health', 'cron', 'tokens', 'status'],
           run: () => {
             haptic('tap')
             host.navigate('/hermes-center')
