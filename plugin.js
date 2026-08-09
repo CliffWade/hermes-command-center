@@ -1504,7 +1504,7 @@ function ActivityTab({ data }) {
           jsx(StatCard, { label: 'Deliveries', value: String(deliveries.length), sub: 'queued messages', icon: 'send', accent: ACCENTS.gold, index: 3 })
         ]
       }),
-      // Recent sessions
+      // Recent sessions — card grid so rows fill the width (no stretched table)
       jsx(Section, {
         title: 'Recent sessions',
         icon: 'history',
@@ -1512,15 +1512,16 @@ function ActivityTab({ data }) {
         extra: `${sessions.length} shown`,
         children: sessions.length
           ? jsxs('div', {
-              className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+              className: 'grid gap-2',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
               children: withModel.map((s, i) => {
                 const tone = sourceTone[s.source] || ACCENTS.idle
                 return jsxs('div', {
                   key: s.id,
                   className: cn(
-                    'flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)',
-                    i > 0 && 'border-t border-(--ui-stroke-secondary)'
+                    'hc-fade-up flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2 transition-colors hover:bg-(--ui-bg-quaternary)'
                   ),
+                  style: { animationDelay: `${i * 20}ms` },
                   children: [
                     jsx('span', {
                       className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
@@ -1528,20 +1529,19 @@ function ActivityTab({ data }) {
                       children: s.source || '?'
                     }),
                     jsx('span', {
-                      className: 'w-40 shrink-0 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)',
+                      className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)',
                       title: s.id,
                       children: s.label || sessionShort(s.id)
                     }),
-                    jsx('span', { className: 'min-w-0 flex-1' }),
                     s.showModel
-                      ? jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model })
+                      ? jsx('span', { className: 'max-w-[6rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model })
                       : null,
                     jsx('span', {
                       className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums',
                       style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' },
                       children: `${s.msg_count} msgs`
                     }),
-                    jsx('span', { className: 'w-16 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
+                    jsx('span', { className: 'w-14 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
                   ]
                 })
               })
@@ -1556,16 +1556,18 @@ function ActivityTab({ data }) {
         extra: `${delegations.length + deliveries.length} total`,
         children: (delegations.length || deliveries.length)
           ? jsxs('div', {
-              className: 'flex flex-col gap-2',
+              className: 'grid gap-2',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
               children: [
                 // Delegations — only render when non-empty
                 delegations.length
                   ? jsxs('div', {
-                      className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                      className: 'flex flex-col gap-2',
                       children: delegations.map((d, i) => (
                         jsxs('div', {
                           key: d.id,
-                          className: cn('flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                          className: cn('hc-fade-up flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2 transition-colors hover:bg-(--ui-bg-quaternary)'),
+                          style: { animationDelay: `${i * 20}ms` },
                           children: [
                             jsx('span', {
                               className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
@@ -1574,8 +1576,7 @@ function ActivityTab({ data }) {
                                 : { backgroundColor: 'rgba(183,121,31,0.12)', color: '#b7791f' },
                               children: d.state || '?'
                             }),
-                            jsx('span', { className: 'w-40 shrink-0 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.origin_session, children: d.label || sessionShort(d.origin_session) }),
-                            jsx('span', { className: 'min-w-0 flex-1' }),
+                            jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.origin_session, children: d.label || sessionShort(d.origin_session) }),
                             jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.dispatched_at ? fmtRelTime(new Date(d.dispatched_at * 1000)) : '—' })
                           ]
                         })
@@ -1585,19 +1586,19 @@ function ActivityTab({ data }) {
                 // Deliveries — only render when non-empty
                 deliveries.length
                   ? jsxs('div', {
-                      className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
+                      className: 'flex flex-col gap-2',
                       children: deliveries.map((d, i) => (
                         jsxs('div', {
                           key: d.id,
-                          className: cn('flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                          className: cn('hc-fade-up flex items-center gap-2 rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) px-3 py-2 transition-colors hover:bg-(--ui-bg-quaternary)'),
+                          style: { animationDelay: `${i * 20}ms` },
                           children: [
                             jsx('span', {
                               className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold',
                               style: { backgroundColor: 'rgba(47,127,212,0.12)', color: '#2f7fd4' },
                               children: d.platform || '?'
                             }),
-                            jsx('span', { className: 'w-40 shrink-0 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.session_key, children: sessionShort(d.session_key) }),
-                            jsx('span', { className: 'min-w-0 flex-1' }),
+                            jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: d.session_key, children: sessionShort(d.session_key) }),
                             jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: d.created_at ? fmtRelTime(new Date(d.created_at * 1000)) : '—' })
                           ]
                         })
