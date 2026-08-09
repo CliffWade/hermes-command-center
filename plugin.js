@@ -1609,63 +1609,99 @@ function ActivityHeatmap({ heatmap }) {
     children: jsxs('div', {
       className: 'flex flex-col gap-3',
       children: [
-        // Hour grid: 24 cells, 4 rows x 6 cols for readability
+        // Hour grid: 24 cells (one per hour of day)
         jsxs('div', {
-          className: 'grid gap-1.5',
-          style: { gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' },
-          children: hours.map((n, h) => {
-            const pct = n / maxHour
-            const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`
-            return jsxs('div', {
-              key: h,
-              className: 'group relative flex h-7 items-center justify-center rounded-md text-[0.5625rem] transition-transform hover:scale-105',
-              style: { backgroundColor: heatColor(pct) },
+          className: 'flex flex-col gap-1',
+          children: [
+            jsxs('div', {
+              className: 'flex items-center justify-between',
               children: [
-                jsx('span', {
-                  className: n > 0 ? 'font-semibold text-(--ui-text-primary)' : 'text-(--ui-text-quaternary)',
-                  children: n > 0 ? (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)) : '·'
-                }),
-                n > 0
-                  ? jsx('span', {
-                      className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
-                      children: `${label}: ${fmtNum(n)} msgs`
-                    })
-                  : null
+                jsx('span', { className: 'text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: 'By hour of day' }),
+                jsx('span', { className: 'text-[0.5625rem] text-(--ui-text-quaternary)', children: '24 blocks · one per hour' })
               ]
-            })
-          })
-        }),
-        // Hour labels row
-        jsx('div', {
-          className: 'flex justify-between px-0.5 text-[0.5rem] text-(--ui-text-quaternary)',
-          children: ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'].map(l =>
-            jsx('span', { key: l, children: l })
-          )
-        }),
-        // 7-day strip
-        days.length
-          ? jsxs('div', {
+            }),
+            jsxs('div', {
               className: 'grid gap-1.5',
-              style: { gridTemplateColumns: `repeat(${Math.max(days.length, 1)}, minmax(0, 1fr))` },
-              children: days.map((d, i) => {
-                const pct = d.count / maxDay
-                const short = (d.date || '').slice(5)
+              style: { gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' },
+              children: hours.map((n, h) => {
+                const pct = n / maxHour
+                const label = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`
                 return jsxs('div', {
-                  key: d.date,
-                  className: 'group relative flex flex-col items-center gap-1 rounded-md p-1.5 transition-transform hover:scale-105',
+                  key: h,
+                  className: 'group relative flex h-9 flex-col items-center justify-center gap-0.5 rounded-md transition-transform hover:scale-105',
                   style: { backgroundColor: heatColor(pct) },
                   children: [
-                    jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
-                    jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: short }),
                     jsx('span', {
-                      className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
-                      children: `${d.date}: ${fmtNum(d.count)} msgs`
-                    })
+                      className: n > 0 ? 'font-semibold leading-none text-(--ui-text-primary)' : 'leading-none text-(--ui-text-quaternary)',
+                      children: n > 0 ? (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)) : '·'
+                    }),
+                    jsx('span', {
+                      className: n > 0 ? 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)' : 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)',
+                      children: label
+                    }),
+                    n > 0
+                      ? jsx('span', {
+                          className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
+                          children: `${label} (hour ${h}): ${fmtNum(n)} msgs`
+                        })
+                      : null
                   ]
                 })
               })
             })
-          : null
+          ]
+        }),
+        // 7-day strip — one block per day
+        days.length
+          ? jsxs('div', {
+              className: 'flex flex-col gap-1',
+              children: [
+                jsxs('div', {
+                  className: 'flex items-center justify-between',
+                  children: [
+                    jsx('span', { className: 'text-[0.625rem] font-semibold uppercase tracking-wide text-(--ui-text-quaternary)', children: 'Per day' }),
+                    jsx('span', { className: 'text-[0.5625rem] text-(--ui-text-quaternary)', children: `${days.length} blocks · one per day` })
+                  ]
+                }),
+                jsxs('div', {
+                  className: 'grid gap-1.5',
+                  style: { gridTemplateColumns: `repeat(${Math.max(days.length, 1)}, minmax(0, 1fr))` },
+                  children: days.map((d, i) => {
+                    const pct = d.count / maxDay
+                    const short = (d.date || '').slice(5)
+                    return jsxs('div', {
+                      key: d.date,
+                      className: 'group relative flex flex-col items-center gap-1 rounded-md p-1.5 transition-transform hover:scale-105',
+                      style: { backgroundColor: heatColor(pct) },
+                      children: [
+                        jsx('span', { className: 'text-[0.6875rem] font-bold tabular-nums text-(--ui-text-primary)', children: fmtNum(d.count) }),
+                        jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: short }),
+                        jsx('span', {
+                          className: 'pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-(--ui-bg-elevated) px-2 py-1 text-[0.5625rem] text-(--ui-text-primary) opacity-0 shadow-lg transition-opacity group-hover:opacity-100',
+                          children: `${d.date}: ${fmtNum(d.count)} msgs`
+                        })
+                      ]
+                    })
+                  })
+                })
+              ]
+            })
+          : null,
+        // Legend: intensity scale
+        jsxs('div', {
+          className: 'flex items-center justify-end gap-1.5',
+          children: [
+            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'low' }),
+            [0.05, 0.2, 0.4, 0.6, 0.85, 1].map(t =>
+              jsx('span', {
+                key: t,
+                className: 'h-2 w-2 rounded-sm',
+                style: { backgroundColor: heatColor(t) }
+              })
+            ),
+            jsx('span', { className: 'text-[0.5rem] text-(--ui-text-quaternary)', children: 'high' })
+          ]
+        })
       ]
     })
   })
