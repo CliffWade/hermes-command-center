@@ -1631,10 +1631,18 @@ function ActivityHeatmap({ heatmap }) {
                   className: 'group relative flex h-9 flex-col items-center justify-center gap-0.5 rounded-md transition-transform hover:scale-105',
                   style: { backgroundColor: heatColor(pct) },
                   children: [
-                    jsx('span', {
-                      className: n > 0 ? 'font-semibold leading-none text-(--ui-text-primary)' : 'leading-none text-(--ui-text-quaternary)',
-                      children: n > 0 ? (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)) : '·'
-                    }),
+                    n > 0
+                      ? jsxs('div', {
+                          className: 'flex items-baseline gap-0.5',
+                          children: [
+                            jsx('span', {
+                              className: 'font-semibold leading-none text-(--ui-text-primary)',
+                              children: n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+                            }),
+                            jsx('span', { className: 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)', children: 'msgs' })
+                          ]
+                        })
+                      : jsx('span', { className: 'leading-none text-(--ui-text-quaternary)', children: '·' }),
                     jsx('span', {
                       className: n > 0 ? 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)' : 'text-[0.4375rem] leading-none text-(--ui-text-quaternary)',
                       children: label
