@@ -626,13 +626,18 @@ async def usage():
     out = {"providers": [], "credits": []}
 
     # 1) Local provider usage from session_model_usage.
+    #    Any provider Hermes has billed appears here — the grouping is
+    #    data-driven, so new providers (Anthropic, Gemini, xAI, Mistral,
+    #    Groq, Together, Fireworks, local Ollama, ...) show up with no
+    #    code change. 'unknown'/empty names sort to the end on purpose.
     rows = _query(
         "SELECT billing_provider, billing_mode, "
         "SUM(input_tokens), SUM(output_tokens), SUM(cache_read_tokens), "
         "SUM(reasoning_tokens), SUM(api_call_count), SUM(estimated_cost_usd), "
         "COUNT(DISTINCT model), COUNT(DISTINCT session_id) "
         "FROM session_model_usage GROUP BY billing_provider, billing_mode "
-        "ORDER BY SUM(input_tokens + output_tokens) DESC",
+        "ORDER BY (CASE WHEN billing_provider IN ('', 'unknown', 'null') THEN 1 ELSE 0 END), "
+        "SUM(input_tokens + output_tokens) DESC",
     )
     for r in rows:
         provider = r[0] or "unknown"

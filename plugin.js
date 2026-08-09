@@ -1688,9 +1688,39 @@ const PROVIDER_META = {
   auto: { label: 'Auto (routing)', icon: 'arrow-swap', accent: { from: '#0f9a9a', to: '#2fc4c4', text: '#0f9a9a', bg: 'rgba(15,154,154,0.12)' } }
 }
 
+function providerMeta(provider) {
+  if (PROVIDER_META[provider]) return PROVIDER_META[provider]
+  // Any provider Hermes has billed but we don't have a canned label for:
+  // give it a readable name + a neutral card so it never renders as a
+  // raw DB slug. Title-cases words, keeps common acronyms uppercase.
+  const words = String(provider || 'unknown')
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map(w => {
+      const lower = w.toLowerCase()
+      if (['ai', 'api', 'mcp', 'lm', 'llm', 'go', 'gpt', 'url'].includes(lower)) return lower.toUpperCase()
+      return lower.charAt(0).toUpperCase() + lower.slice(1)
+    })
+  return {
+    label: words.length ? words.join(' ') : 'Unknown',
+    icon: 'plug',
+    accent: { from: '#8a8f98', to: '#c3c8cf', text: '#8a8f98', bg: 'rgba(138,143,152,0.12)' }
+  }
+}
+
 function UsageTab({ data }) {
   const credits = data.credits || []
-  const providers = data.providers || []
+  const providers = (data.providers || [])
+    // Pin 'unknown'/empty providers to the end; known providers keep the
+    // backend's token-descending order (stable sort preserves it).
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => {
+      const au = a.p.provider === 'unknown' || !a.p.provider
+      const bu = b.p.provider === 'unknown' || !b.p.provider
+      if (au !== bu) return au ? 1 : -1
+      return a.i - b.i
+    })
+    .map(x => x.p)
   const totalTokens = providers.reduce((acc, p) => acc + (p.input || 0) + (p.output || 0), 0)
   const totalCalls = providers.reduce((acc, p) => acc + (p.api_calls || 0), 0)
   const totalCost = providers.reduce((acc, p) => acc + (p.cost || 0), 0)
@@ -1775,7 +1805,7 @@ function UsageTab({ data }) {
               className: 'grid gap-2.5',
               style: { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
               children: providers.map((p, i) => {
-                const meta = PROVIDER_META[p.provider] || { label: p.provider, icon: 'plug', accent: { from: '#8a8f98', to: '#c3c8cf', text: '#8a8f98', bg: 'rgba(138,143,152,0.12)' } }
+                const meta = providerMeta(p.provider)
                 const total = (p.input || 0) + (p.output || 0)
                 const maxTotal = Math.max(...providers.map(x => (x.input || 0) + (x.output || 0)), 1)
                 return jsxs('div', {
