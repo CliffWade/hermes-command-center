@@ -438,6 +438,7 @@ async def models():
     for r in top_rows:
         out["top_sessions"].append({
             "session_id": r[0] or "",
+            "label": _session_label(r[0] or "", ""),
             "model": r[1] or "",
             "tokens": _int(r[2]),
             "api_calls": _int(r[3]),
@@ -489,6 +490,42 @@ def _state_db() -> Path:
     return _hermes_home() / "state.db"
 
 
+def _session_start_iso(session_id: str):
+    """Session ids look like 20260731_095257_378ad5 or cron_<id>_20260714_070006.
+    Extract the embedded UTC timestamp as an ISO string (or empty)."""
+    if not session_id:
+        return ""
+    import re
+    m = re.search(r"(\d{8})_(\d{6})", session_id)
+    if not m:
+        return ""
+    try:
+        dt = datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
+        return dt.isoformat() + "Z"
+    except Exception:
+        return ""
+
+
+def _session_label(session_id: str, source: str) -> str:
+    """Human label: 'cron <task-id>' for cron sessions, else the date/time part."""
+    if not session_id:
+        return "unknown session"
+    if session_id.startswith("cron_"):
+        parts = session_id.split("_")
+        # cron_<jobid>_20260714_070006
+        if len(parts) >= 2:
+            return "cron " + parts[1][:8]
+        return session_id
+    iso = _session_start_iso(session_id)
+    if iso:
+        try:
+            dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+            return dt.strftime("%b %d, %H:%M")
+        except Exception:
+            pass
+    return session_id[:12]
+
+
 @router.get("/activity")
 async def activity():
     """Recent sessions, delegations, and delivery obligations."""
@@ -522,6 +559,8 @@ async def activity():
                 "started_at": _int(r["started_at"]) or 0,
                 "msg_count": _int(r["msg_count"]),
                 "last_msg": _int(r["last_msg"]) or 0,
+                "label": _session_label(r["id"], r["source"] or ""),
+                "started_iso": _session_start_iso(r["id"]),
             })
 
         # Recent delegations.

@@ -1194,12 +1194,12 @@ function ModelsTab({ data }) {
                   children: (data.top_sessions || []).map((s, i) => (
                     jsxs('div', {
                       key: s.session_id,
-                      className: cn('flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
+                      className: cn('flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)', i > 0 && 'border-t border-(--ui-stroke-secondary)'),
                       children: [
-                        jsx('span', { className: 'shrink-0 font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: String(i + 1) }),
-                        jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: s.session_id, children: sessionShort(s.session_id) }),
+                        jsx('span', { className: 'w-4 shrink-0 text-right font-mono text-[0.625rem] text-(--ui-text-quaternary)', children: String(i + 1) }),
+                        jsx('span', { className: 'min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)', title: s.session_id, children: s.label || sessionShort(s.session_id) }),
                         jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model }),
-                        jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-secondary)', children: fmtNum(s.tokens) })
+                        jsx('span', { className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums', style: { backgroundColor: 'rgba(183,121,31,0.10)', color: '#b7791f' }, children: fmtNum(s.tokens) })
                       ]
                     })
                   ))
@@ -1477,6 +1477,11 @@ function ActivityTab({ data }) {
   const delegations = data.delegations || []
   const deliveries = data.deliveries || []
   const totalMsgs = sessions.reduce((acc, s) => acc + (s.msg_count || 0), 0)
+  // Only show the model column when the sessions actually use different
+  // models — a uniform column is pure noise.
+  const models = new Set(sessions.map(s => s.model).filter(Boolean))
+  const showModel = models.size > 1
+  const withModel = sessions.map(s => ({ ...s, showModel }))
 
   const sourceTone = {
     desktop: ACCENTS.blue,
@@ -1508,12 +1513,12 @@ function ActivityTab({ data }) {
         children: sessions.length
           ? jsxs('div', {
               className: 'flex flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary)',
-              children: sessions.map((s, i) => {
+              children: withModel.map((s, i) => {
                 const tone = sourceTone[s.source] || ACCENTS.idle
                 return jsxs('div', {
                   key: s.id,
                   className: cn(
-                    'flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:bg-(--ui-bg-quaternary)',
+                    'flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-(--ui-bg-quaternary)',
                     i > 0 && 'border-t border-(--ui-stroke-secondary)'
                   ),
                   children: [
@@ -1522,9 +1527,20 @@ function ActivityTab({ data }) {
                       style: { backgroundColor: tone.bg, color: tone.text },
                       children: s.source || '?'
                     }),
-                    jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: s.id, children: sessionShort(s.id) }),
-                    s.model ? jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model }) : null,
-                    jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', children: `${s.msg_count} msgs` }),
+                    jsx('span', {
+                      className: 'w-40 shrink-0 truncate text-[0.6875rem] font-medium text-(--ui-text-primary)',
+                      title: s.id,
+                      children: s.label || sessionShort(s.id)
+                    }),
+                    jsx('span', { className: 'min-w-0 flex-1' }),
+                    s.showModel
+                      ? jsx('span', { className: 'max-w-[8rem] shrink-0 truncate text-[0.625rem] text-(--ui-text-quaternary)', children: s.model })
+                      : null,
+                    jsx('span', {
+                      className: 'shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums',
+                      style: { backgroundColor: 'rgba(47,127,212,0.10)', color: '#2f7fd4' },
+                      children: `${s.msg_count} msgs`
+                    }),
                     jsx('span', { className: 'w-16 shrink-0 text-right text-[0.625rem] tabular-nums text-(--ui-text-quaternary)', title: s.last_msg ? new Date(s.last_msg * 1000).toLocaleString() : '', children: s.last_msg ? fmtRelTime(new Date(s.last_msg * 1000)) : '—' })
                   ]
                 })
