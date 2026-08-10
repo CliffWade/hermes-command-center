@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.0.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          version: "0.5.18"
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Validate plugin.yaml
+        run: |
+          uv run python - <<'EOF'
+          import pathlib
+          import yaml
+
+          doc = yaml.safe_load(pathlib.Path("plugin.yaml").read_text())
+          assert doc.get("name") == "command-center", "plugin.yaml name mismatch"
+          assert doc.get("kind") == "backend", "plugin.yaml kind must be backend"
+          assert doc.get("version"), "plugin.yaml missing version"
+          print(f"plugin.yaml OK (v{doc['version']})")
+          EOF
+
+      - name: Compile plugin_api.py
+        run: uv run python -m py_compile plugin_api.py
+
+      - name: Check plugin.js parses as ESM
+        run: |
+          cp plugin.js /tmp/check.mjs
+          node --check /tmp/check.mjs
+
+      - name: Check README screenshot references exist
+        run: |
+          uv run python - <<'EOF'
+          import pathlib
+          import re
+
+          readme = pathlib.Path("README.md").read_text()
+          refs = re.findall(r"docs/([a-z0-9-]+\.png)", readme)
+          missing = [r for r in refs if not pathlib.Path("docs", r).exists()]
+          assert not missing, f"missing screenshots: {missing}"
+          print(f"README screenshots OK ({len(refs)} referenced)")
+          EOF

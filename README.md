@@ -1,5 +1,16 @@
 # Hermes Command Center
 
+[![Release](https://img.shields.io/github/v/release/CliffWade/hermes-command-center?sort=semver&style=for-the-badge&label=Version&color=7B2D8E)](https://github.com/CliffWade/hermes-command-center/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/CliffWade/hermes-command-center/ci.yml?style=for-the-badge&label=CI)](https://github.com/CliffWade/hermes-command-center/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/CliffWade/hermes-command-center?style=for-the-badge&label=License)](https://github.com/CliffWade/hermes-command-center/blob/main/LICENSE)
+
+> ## 🚀 10 tabs — v1.0.0 is live
+>
+> A read-only health and activity dashboard for your Hermes instance:
+> **live health score, real token spend per provider, activity heatmap,
+> and every cron job in one place** — with honest numbers, not guesses.
+> See the [release notes](https://github.com/CliffWade/hermes-command-center/releases/tag/v1.0.0) and the [full changelog](CHANGELOG.md).
+
 A read-only health and activity dashboard for your Hermes instance. Ten tabs
 that answer "what is my Hermes doing?" in one place: processes, tokens,
 cron jobs, plugins, models, skills, memory, and system.
