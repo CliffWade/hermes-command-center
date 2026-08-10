@@ -23,7 +23,7 @@ jobs:
 
       - name: Validate plugin.yaml
         run: |
-          uv run python - <<'EOF'
+          uv run --with pyyaml python - <<'EOF'
           import pathlib
           import yaml
 
@@ -44,7 +44,7 @@ jobs:
 
       - name: Check README screenshot references exist
         run: |
-          uv run python - <<'EOF'
+          uv run --with pyyaml python - <<'EOF'
           import pathlib
           import re
 
