@@ -625,10 +625,14 @@ function OverviewTab({ data, onRefresh }) {
     factors.push({ label, penalty, ok, desc })
   }
   addFactor('Backends running', 35, !!live, live ? 'Hermes backends are up.' : 'No backend processes detected — nothing is serving requests.')
-  addFactor('Errors (24h)', Math.min(30, (e.count_24h || 0) * 5), !e.count_24h, e.count_24h ? `${e.count_24h} errors in the last 24h (5 points each, capped at 30).` : 'No errors in the last 24h.')
+  addFactor('Errors (24h)', Math.min(15, (e.count_24h || 0) * 5), !e.count_24h, e.count_24h ? `${e.count_24h} real errors in the last 24h (5 points each, capped at 15 — transient stream closes don't tank the score).` : 'No real errors in the last 24h.')
   addFactor('Cron failures', 20, !c.failed, c.failed ? `${c.failed} cron job(s) failed recently.` : 'No recent cron failures.')
   addFactor('Cache efficiency', cachePct < 50 ? 10 : 0, cachePct >= 50, cachePct < 50 ? `Only ${cachePct}% of token traffic came from cache (want ≥50%).` : `${cachePct}% of token traffic came from cache.`)
-  addFactor('Memory headroom', m.always_on_limit && m.always_on_chars / m.always_on_limit > 0.9 ? 10 : 0, !(m.always_on_limit && m.always_on_chars / m.always_on_limit > 0.9), m.always_on_limit && m.always_on_chars / m.always_on_limit > 0.9 ? 'Always-on memory is over 90% full — needs consolidation.' : 'Always-on memory has headroom.')
+  // Memory headroom is per-file (MEMORY.md vs 4000, USER.md vs 2500) —
+  // the combined sum vs a single limit overstates fill.
+  const memOver = (m.memory_md_limit && m.memory_md_chars / m.memory_md_limit > 0.9) ||
+                  (m.user_md_limit && m.user_md_chars / m.user_md_limit > 0.9)
+  addFactor('Memory headroom', memOver ? 10 : 0, !memOver, memOver ? 'A memory file is over 90% full — needs consolidation.' : 'Memory files have headroom.')
   health = Math.max(0, health)
   const healthColor = health >= 80 ? ['#2f9e63', '#0f9a9a'] : health >= 50 ? ['#b7791f', '#d4578f'] : ['#d64545', '#d4578f']
 

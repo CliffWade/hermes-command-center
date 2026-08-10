@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -168,28 +169,36 @@ async def overview():
         pass
 
     # Error count in errors.log, last 24h + recent lines for the viewer.
-    errors = {"count_24h": 0, "latest": []}
+    # Only genuine ERROR/CRITICAL lines count — Hermes logs routine
+    # WARNINGs (check_fn gating, PAID-lane notices) on every turn, so
+    # counting warnings would flag healthy installs as erroring.
+    errors = {"count_24h": 0, "warnings_24h": 0, "latest": []}
     log_path = home / "logs" / "errors.log"
     try:
         if log_path.exists():
             mtime = log_path.stat().st_mtime
             lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
             recent = lines[-12:]
-            # Count only lines from the last 24h (timestamp prefix on most lines).
-            count = 0
+            err_count = 0
+            warn_count = 0
             for ln in lines:
-                if ln[:19].isdigit() or "-" in ln[:10]:
-                    try:
-                        ts = ln[:23]
-                        if ts[:4].isdigit():
-                            t = time.mktime(time.strptime(ts[:19], "%Y-%m-%d %H:%M:%S"))
-                            if now - t <= 86400:
-                                count += 1
-                        else:
-                            count += 1
-                    except Exception:
-                        count += 1
-            errors["count_24h"] = count if mtime >= now - 86400 else 0
+                # Format: "2026-08-09 19:58:21,629 WARNING tools.registry: ..."
+                m = re.match(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})[,\s]\d*\s+([A-Z]+)\s+", ln)
+                if not m:
+                    continue
+                try:
+                    t = time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S"))
+                except Exception:
+                    continue
+                if now - t > 86400:
+                    continue
+                lvl = m.group(2)
+                if lvl in ("ERROR", "CRITICAL"):
+                    err_count += 1
+                elif lvl == "WARNING":
+                    warn_count += 1
+            errors["count_24h"] = err_count if mtime >= now - 86400 else 0
+            errors["warnings_24h"] = warn_count if mtime >= now - 86400 else 0
             errors["latest"] = recent[-6:]
     except Exception:
         pass
