@@ -2222,6 +2222,77 @@ function UsageTab({ data }) {
               })
             })
           : jsx(EmptyState, { title: 'No provider usage', description: 'No token usage recorded yet.' })
+      }),
+      // Tokens by session, grouped per Hermes profile
+      jsx(Section, {
+        title: 'Tokens by session · per profile',
+        icon: 'organization',
+        accent: ACCENTS.purple,
+        extra: (data.profiles || []).length > 1 ? `${data.profiles.length} profiles` : 'single profile',
+        children: (data.profiles || []).length
+          ? jsxs('div', {
+              className: 'grid gap-2.5',
+              style: { gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' },
+              children: (data.profiles || []).map((pr, pi) => {
+                const sessions = pr.sessions || []
+                const maxTok = Math.max(...sessions.map(s => s.tokens), 1)
+                const profTotal = sessions.reduce((a, s) => a + s.tokens, 0)
+                return jsxs('div', {
+                  key: pr.name,
+                  className: cn(
+                    'hc-glow hc-fade-up flex flex-col gap-2 rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-bg-chrome) p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-lg'
+                  ),
+                  style: { animationDelay: `${pi * 40}ms` },
+                  children: [
+                    jsxs('div', {
+                      className: 'flex items-center gap-2',
+                      children: [
+                        jsx('div', {
+                          className: 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white',
+                          style: { background: 'linear-gradient(135deg, #7b5fd9 0%, #a48cf0 100%)', boxShadow: '0 3px 8px rgba(123,95,217,0.3)' },
+                          children: jsx(Codicon, { name: 'organization', className: 'text-xs' })
+                        }),
+                        jsx('span', { className: 'min-w-0 flex-1 truncate text-xs font-bold text-(--ui-text-primary)', children: pr.name }),
+                        jsx('span', {
+                          className: 'shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums',
+                          style: { backgroundColor: 'rgba(123,95,217,0.12)', color: '#7b5fd9' },
+                          children: `${fmtNum(profTotal)} tokens`
+                        })
+                      ]
+                    }),
+                    sessions.length
+                      ? jsxs('div', {
+                          className: 'flex flex-col gap-1',
+                          children: sessions.map((s, si) => {
+                            const pct = maxTok ? Math.round((s.tokens / maxTok) * 100) : 0
+                            return jsxs('div', {
+                              key: s.session_id || si,
+                              className: 'flex flex-col gap-0.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-(--ui-bg-quaternary)',
+                              children: [
+                                jsxs('div', {
+                                  className: 'flex items-center gap-2',
+                                  children: [
+                                    jsx('span', { className: 'min-w-0 flex-1 truncate font-mono text-[0.625rem] text-(--ui-text-secondary)', title: s.session_id, children: s.label || s.session_id }),
+                                    jsx('span', { className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-secondary)', children: `${fmtNum(s.tokens)} tok · ${s.calls} calls` })
+                                  ]
+                                }),
+                                jsx('div', {
+                                  className: 'h-1 w-full overflow-hidden rounded-full bg-(--ui-bg-quaternary)',
+                                  children: jsx('div', {
+                                    className: 'h-full rounded-full',
+                                    style: { width: `${Math.max(2, pct)}%`, background: 'linear-gradient(90deg, #7b5fd9 0%, #a48cf0 100%)' }
+                                  })
+                                })
+                              ]
+                            })
+                          })
+                        })
+                      : jsx('span', { className: 'text-[0.625rem] text-(--ui-text-tertiary)', children: 'No token usage recorded for this profile.' })
+                  ]
+                })
+              })
+            })
+          : jsx(EmptyState, { title: 'No profiles', description: 'No session usage found.' })
       })
     ]
   })

@@ -746,6 +746,59 @@ async def usage():
     except Exception:
         pass
 
+    # 1c) Tokens by session, grouped per Hermes profile. Each profile is an
+    #     isolated HERMES_HOME with its own state.db, so we enumerate the
+    #     profiles dir plus the default home and read each DB's usage.
+    def _profile_sessions(db_path):
+        """Return [{session_id, label, input, output, tokens}] for one state.db."""
+        try:
+            import sqlite3 as _sq
+            con = _sq.connect(str(db_path))
+            try:
+                rows = con.execute(
+                    "SELECT session_id, SUM(input_tokens), SUM(output_tokens), "
+                    "SUM(cache_read_tokens), SUM(reasoning_tokens), COUNT(*) "
+                    "FROM session_model_usage GROUP BY session_id "
+                    "ORDER BY SUM(input_tokens + output_tokens) DESC LIMIT 10"
+                ).fetchall()
+            finally:
+                con.close()
+            out_s = []
+            for r in rows:
+                sid = r[0] or ""
+                out_s.append({
+                    "session_id": sid,
+                    "label": _session_label(sid, ""),
+                    "input": _int(r[1]),
+                    "output": _int(r[2]),
+                    "cache_read": _int(r[3]),
+                    "reasoning": _int(r[4]),
+                    "calls": _int(r[5]),
+                    "tokens": _int(r[1]) + _int(r[2]),
+                })
+            return out_s
+        except Exception:
+            return []
+
+    profiles = []
+    # Default profile always exists.
+    default_db = _hermes_home() / "state.db"
+    if default_db.exists():
+        profiles.append({"name": "default", "sessions": _profile_sessions(default_db)})
+    # Named profiles under <home>/profiles/<name>/.
+    try:
+        proot = _hermes_home() / "profiles"
+        if proot.is_dir():
+            for pdir in sorted(proot.iterdir()):
+                if not pdir.is_dir():
+                    continue
+                pdb = pdir / "state.db"
+                if pdb.exists():
+                    profiles.append({"name": pdir.name, "sessions": _profile_sessions(pdb)})
+    except Exception:
+        pass
+    out["profiles"] = profiles
+
     # 2) Live balances where an API key is configured. Only OpenRouter has a
     #    public balance endpoint today; add others (xAI, etc.) as they appear.
     or_key = _load_env_secret("OPENROUTER_API_KEY")
