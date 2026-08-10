@@ -1,12 +1,14 @@
 # Hermes Command Center
 
-A read-only health and activity dashboard for your Hermes instance. Six tabs
+A read-only health and activity dashboard for your Hermes instance. Ten tabs
 that answer "what is my Hermes doing?" in one place: processes, tokens,
-cron jobs, plugins, models, skills, and memory.
+cron jobs, plugins, models, skills, memory, and system.
 
-![Command Center](docs/command-center.png)
+![Overview tab](docs/overview.png)
 
-![Memory tab](docs/memory-tab.png)
+![Activity tab](docs/activity.png)
+
+![Models tab](docs/models.png)
 
 ## Features
 
