@@ -1,5 +1,5 @@
 name: command-center
-version: 0.1.0
+version: 1.0.0
 description: "Read-only Hermes health and activity dashboard: cron, plugins, models, skills, memory."
 author: "Cliff Wade (CliffWade)"
 kind: backend

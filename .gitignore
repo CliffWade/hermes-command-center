@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Local plugin state (never commit runtime data)
+*.db
+*.db-journal
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+
+# Build artifacts
+node_modules/
+dist/
